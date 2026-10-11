@@ -26,6 +26,8 @@ export const LINES = {
   skaith: ['Skaith. It only moves when you look away.', 'Skaith. Keep it in view.'],
   ootheen: ['Ootheen. Shoot it quickly, or it moves.'],
   ootheenJump: ['It moved.', 'Too slow. It jumped.'],
+  zik: ['Ziks. Small and fast.'],
+  fael: ['Fael. It is only solid half the time.'],
   brakk: ['Brakk. Armoured. Five shots.', 'A Brakk. Start shooting.'],
   thrum: ['Thrum. It is about to charge.', 'That one charges. Shoot it first.'],
 

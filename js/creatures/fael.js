@@ -4,6 +4,7 @@
 
 import { REACH_DIST, level } from '../config.js';
 import { DEG } from '../projection.js';
+import { scanner } from '../scanner.js';
 import { rand } from '../util.js';
 import { Creature } from './base.js';
 
@@ -18,6 +19,8 @@ export class Fael extends Creature {
     this.ph = Math.random() * 6.28;
     this.ghost = false;
   }
+
+  emerged() { scanner.say('fael'); }
 
   behave(dt) {
     this.ghost = this.t % CYCLE > SOLID;

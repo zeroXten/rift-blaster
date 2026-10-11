@@ -1,7 +1,7 @@
 // Bootstrap, the frame loop, input, and the state machine. Landscape, held in both hands:
 // title -> (help) -> play <-> paused -> gameover
-// Play is one continuous run: each level starts as the last one is cleared, with a card over
-// the top of the screen saying what is new, and every level is harder than the one before.
+// Play is one continuous run: each level starts as the last one is cleared, marked only by its
+// number flashing at the top of the screen, and every level is harder than the one before.
 
 import { FOV_LONG, UI, level, setDifficulty, setLevel } from './config.js';
 import { R, initRender, px } from './render.js';
@@ -19,7 +19,7 @@ import { Game } from './game.js';
 import { frameHit } from './frame.js';
 import { enterFullscreen, exitFullscreen, fullscreen } from './fullscreen.js';
 import { POWERUPS } from './pickups.js';
-import { drawLevelCard, drawScreen } from './screens.js';
+import { drawLevelFlash, drawScreen } from './screens.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { loadStore, recordScore, saveStore } from './storage.js';
 import { pick } from './util.js';
@@ -32,7 +32,7 @@ const PLAIN = params.has('debug');
 const DEBUG = PLAIN || !coarse.matches;
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const KINDS = Object.keys(POWERUPS);
-const CARD_TIME = 5;          // seconds a level card stays up
+const FLASH_TIME = 1.8;       // seconds a new level's number flashes for
 
 const canvas = document.getElementById('game');
 initRender(canvas);
@@ -42,7 +42,7 @@ music.enabled = store.music;
 scanner.voice = store.voice;
 setDifficulty(store.difficulty);
 
-const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, over: null, starting: false, card: null };
+const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, over: null, starting: false, flash: 0 };
 let run = null;
 let game = null;
 let drag = null;
@@ -115,17 +115,17 @@ function begin() {
   // back out of full screen. If the tap has gone stale by now, the casing's key still works.
   goLandscape();
   run = newRun();
-  startLevel(null);
+  startLevel(false);
 }
 
-// Starts the run's current level. cleared is the bonus just earned for the level before, or
-// null when starting or retrying; integrity carries over between levels, topped up a little.
-function startLevel(cleared) {
+// Starts the run's current level. carryOn is true when the level before was just cleared:
+// integrity then carries over, topped up a little. Otherwise it starts full.
+function startLevel(carryOn) {
   setLevel(run.level);
   const def = levelDef(run.level);
-  const integrity = cleared === null ? 100 : Math.min(100, game.integrity + 20);
+  const integrity = carryOn ? Math.min(100, game.integrity + 20) : 100;
   game = new Game(def, { integrity, inv: run.inv });
-  ui.card = { t: CARD_TIME, n: run.level, cleared, boss: def.boss, fresh: def.fresh };
+  ui.flash = FLASH_TIME;
   firePointer = sealPointer = null;
   setState('play');
 }
@@ -158,13 +158,13 @@ function finish(result) {
   const s = game.stats;
   run.kills += s.kills;
   if (result === 'won') {
-    // Straight on to the next level: no screen in between, just the card.
+    // Straight on to the next level, with nothing in between.
     const bonus = Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 5) * level.score);
     run.score += bonus;
     run.checkpoint = run.score;
     run.level++;
     recordScore(store, run);
-    startLevel(bonus);
+    startLevel(true);
   } else {
     recordScore(store, run);
     ui.over = { level: run.level, score: run.score, kills: run.kills, comment: pick(LINES.gameover) };
@@ -197,7 +197,7 @@ function act(id) {
       saveStore(store);
       break;
     // Another go at the level that was lost, with the score as it stood when that level began.
-    case 'retry': run.score = run.checkpoint; startLevel(null); break;
+    case 'retry': run.score = run.checkpoint; startLevel(false); break;
     case 'resume': setState('play'); break;
     case 'recal': doRecalibrate(); if (ui.state === 'paused') setState('play'); break;
     case 'music': store.music = music.enabled = !store.music; saveStore(store); break;
@@ -349,7 +349,7 @@ function tick(dt) {
     ui.buttons = [];
     game.update(dt);
     game.draw();
-    if (ui.card && (ui.card.t -= dt) > 0) drawLevelCard(ui.card);
+    if ((ui.flash -= dt) > 0) drawLevelFlash(run.level, ui.flash / FLASH_TIME);
     if (DEBUG) {
       const yaw = Math.round(((view.yaw / DEG) + 360) % 360), pitch = Math.round(view.pitch / DEG);
       drawTextS(`YAW ${yaw} PITCH ${pitch} FPS ${Math.round(fps)}`, R.view.x + R.view.w - 6, R.view.y + 6, UI.dim, 1, 1);

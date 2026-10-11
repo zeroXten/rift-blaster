@@ -2,6 +2,7 @@
 
 import { REACH_DIST, level } from '../config.js';
 import { DEG } from '../projection.js';
+import { scanner } from '../scanner.js';
 import { clamp, rand } from '../util.js';
 import { Creature } from './base.js';
 
@@ -17,6 +18,8 @@ export class Zik extends Creature {
     this.vy = 0;
     this.turnT = 0;
   }
+
+  emerged() { scanner.say('zik'); }
 
   behave(dt) {
     this.r -= this.speed * dt;

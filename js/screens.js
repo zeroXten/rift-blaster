@@ -1,15 +1,14 @@
-// Everything outside play: title, permissions help, game over and pause, plus the card that
-// introduces each level over the top of the game. Each is laid out on the scanner's screen
+// Everything outside play: title, permissions help, game over and pause, plus the flash that
+// marks each new level. Each is laid out on the scanner's screen
 // (R.view) with the pixel font, inside the same casing as the game, and returns the buttons it
 // drew so main.js can hit-test taps.
 
 import { DIFFICULTY, UI, level } from './config.js';
-import { R, blit, box, cameraFrame, debugBackdrop, px } from './render.js';
+import { R, box, cameraFrame, debugBackdrop, px } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame } from './frame.js';
 import { camera } from './video.js';
-import { CATALOGUE } from './creatures/index.js';
-import { DIMS, getSprite } from './sprites.js';
+import { DIMS } from './sprites.js';
 import { drawRift, makeShape } from './rift.js';
 import { LINES } from './scanner.js';
 
@@ -135,29 +134,14 @@ export function drawScreen(state, c) {
   return buttons;
 }
 
-// The card shown across the top of the screen as a level starts, while play carries on
-// underneath: the bonus for the level just cleared, the new level's number, and a line for
-// each creature it introduces. card: { t, n, cleared, boss, fresh }.
-export function drawLevelCard(card) {
-  if (card.t < 0.6 && ((card.t * 12) | 0) & 1) return;      // flickers out
-  const v = R.view, ctx = R.ctx, mx = v.x + v.w / 2, w = Math.min(v.w - 60, 250);
-  const h = 30 + (card.cleared !== null ? 11 : 0) + card.fresh.length * 22;
-  const x = Math.round(mx - w / 2), y0 = v.y + 16;
-  ctx.globalAlpha = 0.85;
-  box(x, y0, w, h, UI.k, UI.mid);
-  ctx.globalAlpha = 1;
-  let y = y0 + 6;
-  if (card.cleared !== null) {
-    drawText(`LEVEL ${card.n - 1} CLEAR  +${card.cleared}`, mx, y, UI.yel, 1, 0.5);
-    y += 11;
-  }
-  heading(card.boss ? `LEVEL ${card.n}: BOSS` : `LEVEL ${card.n}`, mx, y, UI.w, 2);
-  y += 22;
-  for (const name of card.fresh) {
-    const cat = CATALOGUE[name], ramp = DIMS[cat.dim].ramp, spr = getSprite(cat.sprite, cat.dim);
-    blit(spr.frames[0], x + 18, y + 8, Math.min(1, 20 / Math.max(spr.w, spr.h)));
-    drawText(cat.name, x + 36, y, ramp[2]);
-    drawText(cat.note, x + 36, y + 10, UI.mid);
-    y += 22;
-  }
+// The new level's number, flashed at the top of the screen for a moment as the level starts.
+// left runs from 1 down to 0 over the time it is shown.
+export function drawLevelFlash(n, left) {
+  const v = R.view, mx = v.x + v.w / 2, y = v.y + 12;
+  // A bar that shrinks away under the number; both blink out at the end.
+  if (left < 0.25 && ((left * 40) | 0) & 1) return;
+  const lit = ((left * 14) | 0) & 1;
+  heading(`LEVEL ${n}`, mx, y, lit ? UI.w : UI.yel, 2);
+  const w = Math.round(110 * left);
+  px(mx - w / 2, y + 18, w, 1, lit ? UI.w : UI.yel);
 }

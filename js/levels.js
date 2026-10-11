@@ -30,13 +30,12 @@ export const DIM_SPAWN = {
 
 const DIM_ORDER = ['vesh', 'ulta', 'hollow', 'miridian'];
 
-// The creatures each of the first levels introduces. From level 4 everything is in play.
+// The creatures each of the first levels adds. From level 4 everything is in play. The
+// scanner names each kind the first time one arrives.
 const FRESH = {
   1: ['yrrk'],
   2: ['glomm', 'zik'],
   3: ['skaith', 'brakk'],
-  4: ['ootheen', 'thrum', 'fael'],
-  5: ['ummagog'],
 };
 
 // Scanner lines forced on the first occurrence of a game event, for the first level only.
@@ -58,13 +57,12 @@ const TUTORIAL = {
 //           growth, maxWidth, lockKills (overrides the dimension's hold), pack ([min, max]
 //           override), size, boss, quiet, waitSeen (stays a crack until the player looks at it)
 //   types   the creatures that may appear (null for all of them)
-//   fresh   creatures to introduce on the level card
 //   hints, noDrops, boss
 export function levelDef(n) {
   const boss = n % 5 === 0;
   const dims = DIM_ORDER.slice(0, Math.min(4, n));
   const types = n >= 4 ? null : Object.keys(FRESH).filter(k => k <= n).flatMap(k => FRESH[k]);
-  const def = { n, boss, types, fresh: FRESH[n] || [], hints: n === 1 ? TUTORIAL : null, noDrops: n === 1 };
+  const def = { n, boss, types, hints: n === 1 ? TUTORIAL : null, noDrops: n === 1 };
 
   if (n === 1) {
     // One rift, off to the side so the arrow has something to teach.
