@@ -1,7 +1,8 @@
 // Bootstrap, the frame loop, input, and the state machine. Landscape, held in both hands:
 // title -> (help) -> play <-> paused -> gameover
-// Play is one continuous run: each level starts as the last one is cleared, marked only by its
-// number flashing at the top of the screen, and every level is harder than the one before.
+// Play is one continuous run: the moment a level's last rift is sealed the next level's rifts
+// start opening, marked only by its number flashing at the top of the screen, and every level
+// is harder than the one before.
 
 import { FOV_LONG, UI, level, setDifficulty, setLevel } from './config.js';
 import { R, initRender, px } from './render.js';
@@ -115,19 +116,29 @@ function begin() {
   // back out of full screen. If the tap has gone stale by now, the casing's key still works.
   goLandscape();
   run = newRun();
-  startLevel(false);
+  startLevel();
 }
 
-// Starts the run's current level. carryOn is true when the level before was just cleared:
-// integrity then carries over, topped up a little. Otherwise it starts full.
-function startLevel(carryOn) {
+// Starts a run, or another attempt at the level it was lost on, from full integrity.
+function startLevel() {
   setLevel(run.level);
-  const def = levelDef(run.level);
-  const integrity = carryOn ? Math.min(100, game.integrity + 20) : 100;
-  game = new Game(def, { integrity, inv: run.inv });
+  game = new Game(levelDef(run.level), { inv: run.inv });
   ui.flash = FLASH_TIME;
   firePointer = sealPointer = null;
   setState('play');
+}
+
+// The level's last rift has been sealed: score it and carry straight on into the next one.
+function nextLevel() {
+  const s = game.stats;
+  run.kills += s.kills;
+  run.score += Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 5) * level.score);
+  run.checkpoint = run.score;
+  run.level++;
+  recordScore(store, run);
+  setLevel(run.level);
+  game.advance(levelDef(run.level));
+  ui.flash = FLASH_TIME;
 }
 
 // On a phone, starting fills the screen and holds it in landscape where the browser allows
@@ -152,25 +163,14 @@ function keepAwake() {
   navigator.wakeLock?.request('screen').catch(() => {});
 }
 
-// --- Level results ---------------------------------------------------------------------------
+// --- The end of a run ------------------------------------------------------------------------
 
-function finish(result) {
-  const s = game.stats;
-  run.kills += s.kills;
-  if (result === 'won') {
-    // Straight on to the next level, with nothing in between.
-    const bonus = Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 5) * level.score);
-    run.score += bonus;
-    run.checkpoint = run.score;
-    run.level++;
-    recordScore(store, run);
-    startLevel(true);
-  } else {
-    recordScore(store, run);
-    ui.over = { level: run.level, score: run.score, kills: run.kills, comment: pick(LINES.gameover) };
-    setState('gameover');
-    scanner.speak(ui.over.comment);
-  }
+function gameOver() {
+  run.kills += game.stats.kills;
+  recordScore(store, run);
+  ui.over = { level: run.level, score: run.score, kills: run.kills, comment: pick(LINES.gameover) };
+  setState('gameover');
+  scanner.speak(ui.over.comment);
 }
 
 function pause() {
@@ -197,7 +197,7 @@ function act(id) {
       saveStore(store);
       break;
     // Another go at the level that was lost, with the score as it stood when that level began.
-    case 'retry': run.score = run.checkpoint; startLevel(false); break;
+    case 'retry': run.score = run.checkpoint; startLevel(); break;
     case 'resume': setState('play'); break;
     case 'recal': doRecalibrate(); if (ui.state === 'paused') setState('play'); break;
     case 'music': store.music = music.enabled = !store.music; saveStore(store); break;
@@ -354,7 +354,8 @@ function tick(dt) {
       const yaw = Math.round(((view.yaw / DEG) + 360) % 360), pitch = Math.round(view.pitch / DEG);
       drawTextS(`YAW ${yaw} PITCH ${pitch} FPS ${Math.round(fps)}`, R.view.x + R.view.w - 6, R.view.y + 6, UI.dim, 1, 1);
     }
-    if (game.result) finish(game.result);
+    if (game.cleared) nextLevel();
+    else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
     ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, debug: DEBUG });

@@ -1,5 +1,6 @@
-// One level in play: its rifts, creatures, weapon and effects, from the first rift opening
-// to the last one sealed or Reality Integrity reaching zero.
+// The game in play: rifts, creatures, weapon and effects. One Game lasts a whole run: as each
+// level's last rift is sealed, advance() lays the next level over the top of it without a
+// break, until Reality Integrity reaches zero.
 
 import { MAX_CREATURES, PITCH_LIMIT, level } from './config.js';
 import { DEG, view, wrapAngle } from './projection.js';
@@ -50,11 +51,27 @@ export class Game {
     this.misses = 0;
     this.quiet = 0;
     this.lowWarned = false;
-    this.ending = null;       // 'won' | 'lost' while the last effects play out
+    this.cleared = false;     // the level's last rift has just been sealed
+    this.ending = null;       // 'lost' while the last effects play out
     this.endT = 0;
-    this.result = null;       // set when the level is over
-    // Rift bearings are relative to wherever the player is facing as the level starts.
+    this.result = null;       // 'lost' once the run is over
+    // A run starts with wherever the player is facing as forwards.
     recalibrate();
+  }
+
+  // Carries straight on into the next level: its rifts are scheduled from now, and everything
+  // else (heat, power-ups held and in force, anything still on screen) stays as it is.
+  advance(def) {
+    this.def = def;
+    this.cleared = false;
+    this.pending = def.rifts.map(r => ({ ...r, at: r.at + this.t })).sort((a, b) => a.at - b.at);
+    this.total = this.pending.length;
+    this.rifts = this.rifts.filter(r => r.sealAnim < 0.45);      // let the last seal finish closing
+    this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
+    this.emitted = {};
+    this.quiet = 0;
+    this.integrity = Math.min(100, this.integrity + 20);
+    this.weapon.retune();
   }
 
   // First-occurrence game events. A level can attach a scanner line to any of them.
@@ -84,8 +101,10 @@ export class Game {
   }
 
   openRift(def) {
+    // A bearing given by the level is relative to where the player is facing right now.
     let { yaw, pitch } = def;
-    if (yaw == null) {
+    if (yaw != null) yaw += view.yaw / DEG;
+    else {
       // Anywhere in the full circle, but not on top of a rift that is already open.
       for (let i = 0; i < 30; i++) {
         yaw = rand(-180, 180);
@@ -188,8 +207,8 @@ export class Game {
     if (rift.def.boss) {
       // The big rift takes everything else with it.
       this.pending.length = 0;
-      this.total = this.rifts.length;
       for (const r of this.rifts) r.seal();
+      this.total = this.stats.sealed;
     } else {
       scanner.say('sealed');
     }
@@ -248,14 +267,16 @@ export class Game {
     if (this.ending) {
       this.endT -= dt;
       if (this.endT <= 0) this.result = this.ending;
+    } else if (this.cleared) {
+      // Waiting for main.js to supply the next level, which it does before the next frame.
     } else if (this.integrity <= 0) {
       this.ending = 'lost';
       this.endT = 1.6;
       play('lose');
     } else if (!this.pending.length && this.rifts.length && this.rifts.every(r => r.sealed)) {
-      // With no rift left to hold them here, whatever came through comes apart.
-      this.ending = 'won';
-      this.endT = 1.8;
+      // Level cleared. With no rift left to hold them here, whatever arrived comes apart, and
+      // main.js moves straight on to the next level: nothing stops.
+      this.cleared = true;
       play('win');
       for (const c of this.creatures) c.die(false);
     }

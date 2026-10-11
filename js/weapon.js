@@ -10,8 +10,7 @@ import { vibrate } from './util.js';
 
 export class Weapon {
   constructor() {
-    this.tol = (BEAM_TOL + level.tol) * DEG;
-    this.sealTime = SEAL_TIME * level.seal;
+    this.retune();
     this.tolPx = 0;
     this.heat = 0;
     this.lock = 0;          // seconds of overheat lockout left
@@ -22,6 +21,12 @@ export class Weapon {
     this.rift = null;       // rift under the crosshair
     this.seal = 0;          // 0 to 1
     this.grace = 0;
+  }
+
+  // Takes the aiming tolerance and seal time from the level now in force.
+  retune() {
+    this.tol = (BEAM_TOL + level.tol) * DEG;
+    this.sealTime = SEAL_TIME * level.seal;
   }
 
   // The nearest creature the crosshair is on. Hits are tested by angle from the view direction:

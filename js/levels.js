@@ -53,7 +53,7 @@ const TUTORIAL = {
 // Lays out level n. Returns:
 //   rifts   in the order they open. Fields: at (seconds into the level; rifts sharing a time
 //           open together), dim, yaw / pitch in degrees relative to where the player is facing
-//           as the level starts (omitted for a random bearing), width (starting width 0-1),
+//           when the rift opens (omitted for a random bearing), width (starting width 0-1),
 //           growth, maxWidth, lockKills (overrides the dimension's hold), pack ([min, max]
 //           override), size, boss, quiet, waitSeen (stays a crack until the player looks at it)
 //   types   the creatures that may appear (null for all of them)
@@ -72,11 +72,11 @@ export function levelDef(n) {
 
   const rifts = def.rifts = [];
   const gap = Math.max(5, 15 - n);
-  let at = 3;
+  let at = 0.5;
   if (boss) {
     // The big one, dead ahead, with ordinary rifts opening around the room while it is fought.
     rifts.push({ at, dim: 'unknown', yaw: 0, pitch: 3, width: 0.4, growth: 4, size: 1.6, boss: true, quiet: true });
-    at = 18;
+    at = 15;
   }
   const count = boss ? Math.min(10, 2 + 2 * Math.floor(n / 5)) : Math.min(14, 4 + n);
   for (let i = 0; i < count; i++) {
