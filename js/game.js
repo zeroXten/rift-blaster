@@ -72,8 +72,10 @@ export class Game {
     else if (this.rifts.length > 1 || !this.incident.hints) scanner.say(rift.p.front ? 'riftOpen' : 'riftBehind');
   }
 
-  onKill() {
+  onKill(creature) {
     this.stats.kills++;
+    const rift = creature.rift;
+    if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.incident.hints) scanner.say('weak', true);
     this.emit('firstKill');
     if (++this.streak % 6 === 0) scanner.say('streak');
     if (this.rifts.some(r => r.lockKills && r.kills === r.lockKills)) this.emit('unlocked');

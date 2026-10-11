@@ -235,13 +235,14 @@ export class Rift {
     const ramp = DIMS[this.dim].ramp;
     drawRiftShape(this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
       this.sealed ? SEAL_RAMP : ramp, this.shape, k, this.size > 1);
-    // One pip per creature still to shoot before this rift will seal.
+    // Strength gauge: how hard the other side is still holding the rift open. It drains as the
+    // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.
     if (!this.sealed && this.lockKills) {
-      const n = this.lockKills, x0 = Math.round(this.p.x - (n * 5 - 1) / 2), y = Math.round(this.p.y + this.hh + 5);
-      for (let i = 0; i < n; i++) {
-        px(x0 + i * 5 - 1, y - 1, 5, 5, VOID);
-        px(x0 + i * 5, y, 3, 3, i < this.kills ? ramp[3] : ramp[0]);
-      }
+      const w = 23, x = Math.round(this.p.x - w / 2), y = Math.round(this.p.y + this.hh + 5);
+      const left = Math.max(0, 1 - this.kills / this.lockKills), weak = left === 0 && ((this.t * 5) | 0) & 1;
+      px(x - 1, y - 1, w + 2, 5, weak ? '#ffffff' : VOID);
+      px(x, y, w, 3, ramp[0]);
+      px(x, y, Math.round(w * left), 3, ramp[3]);
     }
   }
 }

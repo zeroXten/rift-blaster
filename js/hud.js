@@ -47,7 +47,7 @@ export function drawHud(game) {
     ring(cx, cy, 15, 0, 6.3, blocked ? (blink ? UI.red : UI.dim) : UI.dim);
     if (wp.seal > 0) ring(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + wp.seal * Math.PI * 2, blocked ? UI.red : UI.w, 2);
     const label = !blocked ? 'SEALING'
-      : rift.kills < rift.lockKills ? `SHOOT ${rift.lockKills - rift.kills} MORE`
+      : rift.kills < rift.lockKills ? 'TOO STRONG'
       : rift.bossLock ? 'LOCKED'
       : 'BLOCKED';
     drawTextS(label, cx, cy + 22, blocked ? UI.red : UI.w, 1, 0.5);

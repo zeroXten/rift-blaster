@@ -25,26 +25,26 @@ export const INCIDENTS = [
     briefing: [
       'Incident one. A rift has opened in your immediate vicinity. This is normal now.',
       'Things called Yrrks will come through it. Small. Numerous. Catalogue entry: avoid.',
-      'Follow the arrow to the rift. Fire with your right thumb. I need samples: the pips under the rift count them. Then hold the crosshair on the rift and I will seal it.',
+      'Follow the arrow to the rift. Fire with your right thumb. The rift is held open by what is pushing from the other side. Shoot them as they come out and it weakens. When the bar under it is empty, hold the crosshair on the rift and I will seal it.',
     ],
     rifts: [
       { at: 0.5, dim: 'vesh', yaw: 55, pitch: 2, maxWidth: 0.6, lockKills: 6, pack: [3, 3], waitSeen: true },
     ],
     hints: {
       start: 'Rift detected. Follow the arrow.',
-      riftSeen: 'That crack is a rift. I need samples before I can seal it.',
-      locked: 'Not yet. Samples first. Shoot what comes out.',
+      riftSeen: 'That crack is a rift. It is too strong to seal yet.',
+      locked: 'Too strong. Shoot what comes out of it and it weakens.',
       tear: "It's tearing. Here they come. Shoot them.",
-      firstKill: 'Good. Keep going.',
-      unlocked: 'Samples logged. Hold the crosshair on the rift to seal it.',
-      blocked: "Can't seal while something is coming through. Shoot it.",
+      firstKill: 'Good. It felt that. Keep going.',
+      unlocked: 'It is weak enough. Hold the crosshair on the rift to seal it.',
+      blocked: "Can't seal while something is halfway through. Let it out first.",
     },
   },
   {
     name: 'Widening',
     creature: 'glomm',
     briefing: [
-      'Several rifts this time. Each is held open from the other side. Shoot enough of what comes through, then hold the crosshair on it to seal it. The pips under a rift count what is left.',
+      'Several rifts this time. Each is held open from the other side. Shoot what comes through and the rift weakens. When the bar under it is empty, hold the crosshair on it to seal it.',
       'Violet rifts lead to Ulta-9. Glomms live there. A Glomm grips the edge of its rift and pulls it wider.',
       'Shoot it off. Two shots. A rift left alone widens: crack, tear, breach. Wider means more of them, faster.',
     ],
