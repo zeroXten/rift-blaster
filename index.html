@@ -17,6 +17,21 @@
 <div id="safe"></div>
 <div id="rotate"><p>TURN YOUR PHONE SIDEWAYS<br><small>The scanner is held in both hands.<br>If nothing happens, switch off rotation lock, or tap here.</small></p></div>
 <noscript><p class="nojs">Rift Blaster needs JavaScript.</p></noscript>
-<script type="module" src="js/main.js"></script>
+<script type="module">
+  // The host (GitHub Pages) lets a browser reuse each file for ten minutes without asking, and a
+  // phone's reload button does not override that for scripts, so a fresh deploy can keep showing
+  // the old game. Before starting, ask the server about every module the game imports; unchanged
+  // files cost one tiny request each, changed ones are replaced in the browser's cache.
+  const seen = new Set();
+  const refresh = url => {
+    if (seen.has(url)) return null;
+    seen.add(url);
+    return fetch(url, { cache: 'no-cache' }).then(r => r.text()).then(text =>
+      Promise.all([...text.matchAll(/from\s+'(\.[^']+)'/g)].map(m => refresh(new URL(m[1], url).href))));
+  };
+  Promise.all([refresh(new URL('js/main.js', location.href).href), fetch('css/style.css', { cache: 'no-cache' })])
+    .catch(() => {})
+    .then(() => import('./js/main.js'));
+</script>
 </body>
 </html>
