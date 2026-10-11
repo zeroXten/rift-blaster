@@ -1,0 +1,73 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The one low-resolution canvas. JS sets its CSS size; the browser scales it with hard edges. */
+#game {
+  display: block;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+/* Camera source. Kept in the layout (not display:none) so iOS keeps decoding frames. */
+#cam {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Probe for the notch / home-indicator insets, read from JS. */
+#safe {
+  position: absolute;
+  visibility: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#rotate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: #05070f;
+  color: #39e6d0;
+  font: bold 18px/1.7 ui-monospace, Menlo, Consolas, monospace;
+  letter-spacing: 1px;
+  padding: 0 24px;
+  text-align: center;
+}
+
+#rotate small {
+  font-size: 12px;
+  font-weight: normal;
+  letter-spacing: 0;
+  color: #6aa6a6;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: flex; }
+}
+
+.nojs {
+  position: fixed;
+  color: #39e6d0;
+  font: 16px ui-monospace, Menlo, Consolas, monospace;
+}
