@@ -1,7 +1,7 @@
 // One incident in play: its rifts, creatures, weapon and effects, from the first rift opening
 // to the last one sealed or Reality Integrity reaching zero.
 
-import { PITCH_LIMIT, level } from './config.js';
+import { MAX_CREATURES, PITCH_LIMIT, level } from './config.js';
 import { DEG, wrapAngle } from './projection.js';
 import { cameraFrame, debugBackdrop } from './render.js';
 import { camera } from './video.js';
@@ -47,6 +47,13 @@ export class Game {
     this.emitted[name] = true;
     const hint = this.incident.hints?.[name];
     if (hint) scanner.show(hint, true);
+  }
+
+  // How many more creatures may be in play, under the difficulty's cap. The boss does not count.
+  room() {
+    let live = 0;
+    for (const c of this.creatures) if (!c.pods && c.state !== 'dying') live++;
+    return Math.min(level.alive - live, MAX_CREATURES - this.creatures.length);
   }
 
   spawn(type, rift, opts) {
@@ -122,7 +129,7 @@ export class Game {
     this.quiet = open ? 0 : this.quiet + dt;
     const next = this.pending[0];
     const room = Math.min(this.incident.maxOpen || 3, level.maxOpen) - open;
-    if (next && !this.ending && room > 0 && (this.t >= next.at * level.gap || this.quiet > 1.5 * level.gap)) {
+    if (next && !this.ending && room > 0 && (this.t >= next.at * level.gap || this.quiet > 1 * level.gap)) {
       // Rifts scheduled for the same moment open together, as far as the difficulty allows.
       for (let n = 0; n < room && this.pending[0]?.at === next.at; n++) this.openRift(this.pending.shift());
     }

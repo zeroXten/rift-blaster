@@ -1,7 +1,7 @@
 // Rifts: fixed points on the sphere that widen through crack, tear and breach, push creatures
 // through, and can be sealed by holding the crosshair on them.
 
-import { MAX_CREATURES, RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR, level } from './config.js';
+import { RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR, level } from './config.js';
 import { DEG, dirFromBearing, onScreen, project, view } from './projection.js';
 import { R, line, px } from './render.js';
 import { DIMS } from './sprites.js';
@@ -13,6 +13,7 @@ const VOID = '#05050a';
 const SEAL_RAMP = ['#6aa6a6', '#9ccdc4', '#f4f4f4', '#ffffff'];
 const KNOTS = 7, MID = KNOTS >> 1;
 const CRACK_RUSH = 4;      // how much faster a rift widens while it is still a crack
+const RESPITE = 3;         // seconds before the next arrival once a full rift has room again
 
 // The outline of one rift: a zig-zag spine with an uneven opening on either side of it, so it
 // reads as a fracture in the air (cracked glass, a lightning bolt) and never as a smooth oval.
@@ -126,7 +127,7 @@ export class Rift {
     this.dir = dirFromBearing(this.yaw, this.pitch);
     this.width = def.width ?? 0.2;
     this.maxWidth = def.maxWidth ?? 1;
-    this.rate = ((def.growth ?? 1) * level.growth) / RIFT_FULL_TIME;
+    this.rate = (def.growth ?? 1) / RIFT_FULL_TIME;
     this.size = def.size ?? 1;
     // A rift is held open from the other side: this many of its creatures must be shot before it will seal.
     const hold = def.lockKills ?? DIM_SPAWN[def.dim]?.hold ?? 0;
@@ -176,7 +177,8 @@ export class Rift {
     if (!this.seen) { this.seen = this.on; return; }
     // A crack lasts only a few seconds: it is a warning, not a stage to wait in. After that a
     // clinging Glomm makes the rift widen 2.5 times as fast, and two of them 4 times.
-    this.width = Math.min(this.maxWidth, this.width + this.rate * (st === 0 ? CRACK_RUSH : 1) * (1 + 1.5 * this.pull) * dt);
+    // Difficulty slows the widening, but never the crack: nobody should wait for the first arrival.
+    this.width = Math.min(this.maxWidth, this.width + this.rate * (st === 0 ? CRACK_RUSH : level.growth) * (1 + 1.5 * this.pull) * dt);
     if (st > this.stageSeen) {
       this.stageSeen = st;
       const name = st === 1 ? 'tear' : 'breach';
@@ -197,13 +199,16 @@ export class Rift {
     }
     const sp = DIM_SPAWN[this.dim];
     if (!sp || st === 0 || this.emerging > 0) return;
+    // No room, from this rift's own cap or the difficulty's cap on creatures in play: hold the
+    // clock at a short respite. Once the player makes space the next arrival is that far off,
+    // which is long enough to seal a rift whose doorway they have just cleared.
+    const max = sp.max[st - 1], room = Math.min(max - this.alive, this.game.room());
+    if (room <= 0) { this.spawnT = Math.max(this.spawnT, RESPITE); return; }
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
-    const max = sp.max[st - 1];
-    if (this.alive >= max || this.game.creatures.length >= MAX_CREATURES) { this.spawnT = 1; return; }
     const [a, b] = this.def.pack || sp.pack[st - 1];
     const n = Math.max(1, a + ((Math.random() * (b - a + 1)) | 0) + level.pack);
-    this.send(Math.min(n, max - this.alive), sp.type);
+    this.send(Math.min(n, room), sp.type);
   }
 
   // Queue n creatures to push through, one after another.

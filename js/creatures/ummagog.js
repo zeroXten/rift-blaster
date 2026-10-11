@@ -120,6 +120,8 @@ export class Ummagog extends Creature {
   }
 
   spit(n) {
+    n = Math.min(n, this.game.room());
+    if (n <= 0) { this.spitT = 1; return; }
     this.spitT = 8 * level.spawn;
     this.roar = 0.8;
     this.rift.send(n, 'spawnling');

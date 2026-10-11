@@ -31,17 +31,19 @@ export const UI = {
 
 // Difficulty. Each field scales the hard setting, which is the game as designed:
 //   speed     how fast creatures close in          spawn    time between arrivals
-//   pack      creatures added to each group        damage   integrity lost per hit taken
-//   hold      kills needed before a rift seals (and the boss's health)
-//   growth    how fast rifts widen                 gap      time between scheduled rifts
+//   alive     most creatures in play at once       pack     creatures added to each group
+//   damage    integrity lost per hit taken         hold     kills needed before a rift seals (and the boss's health)
+//   growth    how fast a rift widens once torn     gap      time between scheduled rifts
 //   maxOpen   most rifts open at once              tol      extra degrees of aiming forgiveness
 //   sealAngle how close the crosshair must be to seal        seal    time the seal takes
 //   heat      heat per shot                        patience how long before an Ootheen jumps, a stunned boss recovers
 //   score     score multiplier
+// Easy keeps things happening but never many at once: one rift, at most two creatures in play,
+// and the next one arrives soon after there is room for it.
 export const DIFFICULTY = {
-  easy:   { name: 'EASY',   speed: 0.5,  spawn: 2,   pack: -1, damage: 0.25, hold: 0.5, growth: 0.4, gap: 1.6, maxOpen: 1, tol: 5,   sealAngle: 1.7,  seal: 0.6, heat: 0.5, patience: 2.5,  score: 0.5 },
-  medium: { name: 'MEDIUM', speed: 0.9,  spawn: 1.15, pack: 0, damage: 0.8,  hold: 0.8, growth: 0.9, gap: 1.1, maxOpen: 3, tol: 1,   sealAngle: 1.15, seal: 1,   heat: 0.9, patience: 1.25, score: 1 },
-  hard:   { name: 'HARD',   speed: 1,    spawn: 1,   pack: 0,  damage: 1,    hold: 1,   growth: 1,   gap: 1,   maxOpen: 9, tol: 0,   sealAngle: 1,    seal: 1,   heat: 1,   patience: 1,    score: 1.5 },
+  easy:   { name: 'EASY',   speed: 0.5, spawn: 0.6,  alive: 2,  pack: -1, damage: 0.25, hold: 0.5, growth: 0.4, gap: 1,   maxOpen: 1, tol: 5, sealAngle: 1.7,  seal: 0.6, heat: 0.5, patience: 2.5,  score: 0.5 },
+  medium: { name: 'MEDIUM', speed: 0.9, spawn: 1.15, alive: 99, pack: 0,  damage: 0.8,  hold: 0.8, growth: 0.9, gap: 1.1, maxOpen: 3, tol: 1, sealAngle: 1.15, seal: 1,   heat: 0.9, patience: 1.25, score: 1 },
+  hard:   { name: 'HARD',   speed: 1,   spawn: 1,    alive: 99, pack: 0,  damage: 1,    hold: 1,   growth: 1,   gap: 1,   maxOpen: 9, tol: 0, sealAngle: 1,    seal: 1,   heat: 1,   patience: 1,    score: 1.5 },
 };
 
 // The difficulty in force. Game code reads its numbers from here.
