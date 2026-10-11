@@ -1,7 +1,8 @@
-// In-game HUD. Reality Integrity and Scanner Heat are gauges in the casing (frame.js draws the
-// casing itself); on the screen there is only the crosshair, the seal ring and the scanner's remarks.
+// In-game HUD. Reality Integrity, Scanner Heat and the controls are in the casing (frame.js
+// draws that); on the screen there is the crosshair, the seal ring, what the crosshair is on,
+// and the scanner's remarks.
 
-import { UI } from './config.js';
+import { UI, level } from './config.js';
 import { view } from './projection.js';
 import { R, blit, px, ring } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
@@ -15,7 +16,11 @@ export function drawHud(game) {
   const blink = ((t * 6) | 0) & 1, hot = wp.lock > 0;
 
   const iv = game.integrity, ic = iv > 60 ? UI.c : iv > 30 ? UI.yel : UI.red;
-  drawFrame({ live: true, pressed: wp.kick > 0, hot, led: iv > 60 ? '#8be025' : iv > 30 ? UI.yel : blink ? UI.red : '#47101a' });
+  drawFrame({
+    live: true, pressed: wp.kick > 0, sealing: game.sealing, hot,
+    led: iv > 60 ? '#8be025' : iv > 30 ? UI.yel : blink ? UI.red : '#47101a',
+    inv: game.inv, active: { rapid: game.rapid > 0, stasis: game.stasis > 0, charge: game.charge },
+  });
 
   // Reality Integrity, top strip
   const { reality: rg, heat: hg } = gauges();
@@ -30,7 +35,8 @@ export function drawHud(game) {
   px(hg.bar + 2, hg.y + 1, Math.round(((hg.barW - 4) * Math.min(100, wp.heat)) / 100), 5, hc);
   if (hot && blink) drawTextS('OVERHEAT', hg.bar + hg.barW / 2, hg.y, UI.w, 1, 0.5);
 
-  // Power-ups in force, down the left of the screen: a timer bar, or a prompt for the rift charge.
+  // The level, and the power-ups in force with their time left.
+  drawTextS(`LEVEL ${level.n}`, v.x + 6, v.y + 6, UI.mid);
   let ey = v.y + 18;
   const chip = (kind, left, label) => {
     const col = POWERUPS[kind].color;
@@ -45,7 +51,7 @@ export function drawHud(game) {
   if (game.rapid > 0) chip('rapid', game.rapid / POWERUPS.rapid.time);
   if (game.stasis > 0) chip('stasis', game.stasis / POWERUPS.stasis.time);
   if (game.charge) chip('charge', 0, 'RIFT CHARGE: SHOOT A RIFT');
-  if (game.banner && (game.banner.t > 0.5 || blink)) drawTextS(game.banner.text, cx, v.y + 34, game.banner.color, 2, 0.5);
+  if (game.banner && (game.banner.t > 0.5 || blink)) drawTextS(game.banner.text, cx, v.y + v.h * 0.3, game.banner.color, 2, 0.5);
 
   // Crosshair: red when overheated, yellow when on a target.
   const cc = hot ? UI.red : wp.target ? UI.yel : UI.c;
@@ -56,21 +62,20 @@ export function drawHud(game) {
     px(Math.min(x0, x0 + dx * 3), Math.min(y0, y0 + dy * 3), dx ? 4 : 1, dy ? 4 : 1, cc);
   }
   px(cx, cy, 1, 1, cc);
-
   if (wp.swallowed > 0) drawTextS('NO EFFECT', cx, cy - 30, UI.mid, 1, 0.5);
 
-  // Seal ring: fills over the seal time; red while something is in the way.
+  // On a rift: say what state it is in and what to do about it. The ring fills while SEAL is
+  // held on a rift that is ready.
   const rift = wp.rift;
   if (rift && !rift.sealed) {
-    const blocked = rift.blocked;
+    const ready = !rift.blocked;
     ring(cx, cy, 15, 0, 6.3, UI.k, 2);
-    ring(cx, cy, 15, 0, 6.3, blocked ? (blink ? UI.red : UI.dim) : UI.dim);
-    if (wp.seal > 0) ring(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + wp.seal * Math.PI * 2, blocked ? UI.red : UI.w, 2);
-    const label = !blocked ? 'SEALING'
-      : rift.kills < rift.lockKills ? 'TOO STRONG'
-      : rift.bossLock ? 'LOCKED'
-      : 'BLOCKED';
-    drawTextS(label, cx, cy + 22, blocked ? UI.red : UI.w, 1, 0.5);
+    ring(cx, cy, 15, 0, 6.3, ready ? (blink || game.sealing ? UI.w : UI.dim) : blink ? UI.red : UI.dim);
+    if (wp.seal > 0) ring(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + wp.seal * Math.PI * 2, UI.w, 2);
+    const label = rift.locked ? (rift.bossLock ? 'LOCKED' : 'TOO STRONG') : !ready ? 'WAIT' : game.sealing ? 'SEALING' : 'HOLD SEAL';
+    drawTextS(label, cx, cy + 22, ready ? UI.w : UI.red, 1, 0.5);
+  } else if (game.sealing) {
+    drawTextS('AIM AT A RIFT', cx, cy + 22, UI.mid, 1, 0.5);
   }
 
   // Scanner remark: one line at a time, a few words, along the bottom of the screen.

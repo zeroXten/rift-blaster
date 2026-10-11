@@ -13,12 +13,13 @@ export const PAL = {
   b: '#7fb4ff',
 };
 
+// rift is the look of the dimension's rifts (see rift.js); ramp runs dark to light.
 export const DIMS = {
-  vesh:     { name: 'Vesh',       ramp: ['#0f3d1a', '#2f8f2a', '#8be025', '#e4ff7a'] },
-  ulta:     { name: 'Ulta-9',     ramp: ['#2a104d', '#6b2fb5', '#b46bff', '#f0c8ff'] },
-  hollow:   { name: 'The Hollow', ramp: ['#2c3a55', '#7f9bc4', '#d5e6ff', '#ffffff'] },
-  miridian: { name: 'Miridian',   ramp: ['#4d2600', '#b55e0a', '#ffa91f', '#ffe9a0'] },
-  unknown:  { name: 'Unknown',    ramp: ['#3d060c', '#99101c', '#f02a2a', '#ff9a7a'] },
+  vesh:     { name: 'Vesh',       rift: 'shard', ramp: ['#0f3d1a', '#2f8f2a', '#8be025', '#e4ff7a'] },
+  ulta:     { name: 'Ulta-9',     rift: 'vortex', ramp: ['#2a104d', '#6b2fb5', '#b46bff', '#f0c8ff'] },
+  hollow:   { name: 'The Hollow', rift: 'slab', ramp: ['#2c3a55', '#7f9bc4', '#d5e6ff', '#ffffff'] },
+  miridian: { name: 'Miridian',   rift: 'prism', ramp: ['#4d2600', '#b55e0a', '#ffa91f', '#ffe9a0'] },
+  unknown:  { name: 'Unknown',    rift: 'shard', ramp: ['#3d060c', '#99101c', '#f02a2a', '#ff9a7a'] },
 };
 
 const GRIDS = {

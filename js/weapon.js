@@ -1,4 +1,5 @@
-// Aiming, firing, heat, and sealing by gaze.
+// Aiming, firing, heat, and sealing. Firing and sealing are separate actions on separate
+// buttons: FIRE shoots creatures, SEAL is held on a weakened rift to close it.
 
 import { BEAM_TOL, HEAT_DECAY, HEAT_PER_SHOT, OVERHEAT_LOCK, SEAL_ANGLE, SEAL_TIME, level } from './config.js';
 import { DEG, angleTo, view } from './projection.js';
@@ -8,11 +9,9 @@ import { scanner } from './scanner.js';
 import { vibrate } from './util.js';
 
 export class Weapon {
-  // up: upgrade levels { cool, beam, seal }
-  constructor(up) {
-    this.decay = HEAT_DECAY * (1 + 0.35 * up.cool);
-    this.tol = (BEAM_TOL + level.tol + 1.5 * up.beam) * DEG;
-    this.sealTime = Math.max(0.8, SEAL_TIME - 0.35 * up.seal) * level.seal;
+  constructor() {
+    this.tol = (BEAM_TOL + level.tol) * DEG;
+    this.sealTime = SEAL_TIME * level.seal;
     this.tolPx = 0;
     this.heat = 0;
     this.lock = 0;          // seconds of overheat lockout left
@@ -42,14 +41,15 @@ export class Weapon {
       this.lock -= dt;
       this.heat = Math.max(0, (100 * this.lock) / OVERHEAT_LOCK);
     } else {
-      this.heat = Math.max(0, this.heat - this.decay * dt);
+      this.heat = Math.max(0, this.heat - HEAT_DECAY * dt);
     }
     game.fx.steam = this.lock > 0;
     // Rapid fire: no heat, and holding the fire button keeps firing.
     if (game.rapid > 0 && game.trigger && !game.ending && (this.auto -= dt) <= 0) this.fire(game);
     this.target = this.pick(game);
 
-    // Sealing: progress builds while an unblocked rift stays near the centre. Looking away resets it.
+    // Sealing: while SEAL is held and a weakened, unblocked rift stays near the centre,
+    // progress builds. Letting go or looking away loses it.
     let near = null, nearA = Infinity;
     for (const r of game.rifts) {
       if (r.sealed) continue;
@@ -58,11 +58,11 @@ export class Weapon {
     }
     if (near && near === this.rift) {
       this.grace = 0.15;
-      if (near.blocked) {
+      if (!game.sealing) this.seal = 0;
+      else if (near.blocked) {
         game.emit(near.locked ? 'locked' : 'blocked');
         if (near.locked && !near.bossLock) scanner.say('locked');
-      }
-      else {
+      } else {
         this.seal += dt / this.sealTime;
         if (this.seal >= 1) { near.seal(); this.rift = null; this.seal = 0; }
       }
@@ -71,7 +71,9 @@ export class Weapon {
       this.seal = 0;
       this.grace = 0.15;
     }
-    sealTone(this.rift && !this.rift.blocked ? this.seal : 0);
+    const working = game.sealing && this.rift && !this.rift.blocked;
+    game.fx.sealing = working ? Math.max(0.01, this.seal) : 0;
+    sealTone(working ? this.seal : 0);
   }
 
   // Rapid fire: taking the power-up also clears any overheat.

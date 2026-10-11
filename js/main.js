@@ -1,23 +1,25 @@
 // Bootstrap, the frame loop, input, and the state machine. Landscape, held in both hands:
-// title -> (help) -> briefing -> play <-> paused -> report -> upgrade -> briefing ... -> victory
-//                                          `-> gameover
+// title -> (help) -> play <-> paused -> gameover
+// Play is one continuous run: each level starts as the last one is cleared, with a card over
+// the top of the screen saying what is new, and every level is harder than the one before.
 
-import { FOV_LONG, UI, level, setDifficulty } from './config.js';
+import { FOV_LONG, UI, level, setDifficulty, setLevel } from './config.js';
 import { R, initRender, px } from './render.js';
 import { DEG, qAxis, setView, view } from './projection.js';
 import {
   debugAim, debugLook, orient, recalibrate, requestMotionPermission, startDebug, startSensor,
   updateOrientation, waitForData,
 } from './orientation.js';
-import { camera, resumeCamera, startCamera } from './video.js';
+import { resumeCamera, startCamera } from './video.js';
 import { audio, initAudio, play, sealTone } from './audio/sfx.js';
 import { music, setMusicMode } from './audio/music.js';
-import { GRADES, LINES, scanner } from './scanner.js';
-import { INCIDENTS } from './incidents.js';
+import { LINES, scanner } from './scanner.js';
+import { levelDef } from './levels.js';
 import { Game } from './game.js';
 import { frameHit } from './frame.js';
 import { enterFullscreen, exitFullscreen, fullscreen } from './fullscreen.js';
-import { drawScreen } from './screens.js';
+import { POWERUPS } from './pickups.js';
+import { drawLevelCard, drawScreen } from './screens.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { loadStore, recordScore, saveStore } from './storage.js';
 import { pick } from './util.js';
@@ -29,28 +31,36 @@ const coarse = matchMedia('(pointer: coarse)');
 const PLAIN = params.has('debug');
 const DEBUG = PLAIN || !coarse.matches;
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const KINDS = Object.keys(POWERUPS);
+const CARD_TIME = 5;          // seconds a level card stays up
 
 const canvas = document.getElementById('game');
 initRender(canvas);
 
 const store = loadStore();
 music.enabled = store.music;
-setDifficulty(store.difficulty);
 scanner.voice = store.voice;
+setDifficulty(store.difficulty);
 
-const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, report: null, starting: false };
-let run = newRun();
+const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, over: null, starting: false, card: null };
+let run = null;
 let game = null;
 let drag = null;
+let firePointer = null;       // the finger holding FIRE, for rapid fire
+let sealPointer = null;       // the finger holding SEAL
+let autoFull = true;          // go full screen when a run starts, until the player leaves it
+let toast = null;
 let last = performance.now();
 let fps = 60;
-let firePointer = null;    // the finger holding the fire button, for rapid fire
-let autoFull = true;      // go full screen when an incident starts, until the player leaves it
-let toast = null;
 
+// A run: one attempt at getting as far as possible. Power-ups held carry from level to level.
 function newRun() {
-  const start = Math.min(INCIDENTS.length, Math.max(1, parseInt(params.get('incident'), 10) || 1)) - 1;
-  return { id: Date.now(), incident: start, upgrades: { cool: 0, beam: 0, seal: 0 }, score: 0, grades: [] };
+  return {
+    id: Date.now(),
+    level: Math.max(1, parseInt(params.get('level'), 10) || 1),
+    score: 0, kills: 0, checkpoint: 0,
+    inv: Object.fromEntries(KINDS.map(k => [k, 0])),
+  };
 }
 
 function setState(state) {
@@ -59,7 +69,6 @@ function setState(state) {
   ui.since = performance.now();
   if (state !== 'play') { sealTone(0); scanner.clear(); }
   setMusicMode(state === 'play' ? 'play' : state === 'paused' ? 'off' : 'menu');
-  if (state === 'briefing') scanner.speak(INCIDENTS[run.incident].briefing.join(' '));
 }
 
 // --- Start tap: motion permission, then camera, then audio is already running ---------------
@@ -102,20 +111,27 @@ async function start() {
 }
 
 function begin() {
+  // Asked for here, once the permission prompts are out of the way, so they cannot knock it
+  // back out of full screen. If the tap has gone stale by now, the casing's key still works.
+  goLandscape();
   run = newRun();
-  game = null;
-  setState('briefing');
+  startLevel(null);
 }
 
-function startIncident() {
-  scanner.hush();
-  goLandscape();
-  game = new Game(INCIDENTS[run.incident], run.upgrades);
+// Starts the run's current level. cleared is the bonus just earned for the level before, or
+// null when starting or retrying; integrity carries over between levels, topped up a little.
+function startLevel(cleared) {
+  setLevel(run.level);
+  const def = levelDef(run.level);
+  const integrity = cleared === null ? 100 : Math.min(100, game.integrity + 20);
+  game = new Game(def, { integrity, inv: run.inv });
+  ui.card = { t: CARD_TIME, n: run.level, cleared, boss: def.boss, fresh: def.fresh };
+  firePointer = sealPointer = null;
   setState('play');
 }
 
-// On a phone, starting an incident fills the screen and holds it in landscape where the browser
-// allows it. Once the player has left full screen themselves, it stays their choice.
+// On a phone, starting fills the screen and holds it in landscape where the browser allows
+// it. Once the player has left full screen themselves, it stays their choice.
 function goLandscape() {
   if (coarse.matches && autoFull) enterFullscreen(true);
 }
@@ -136,35 +152,30 @@ function keepAwake() {
   navigator.wakeLock?.request('screen').catch(() => {});
 }
 
-// --- Incident results ------------------------------------------------------------------------
+// --- Level results ---------------------------------------------------------------------------
 
 function finish(result) {
-  const s = game.stats, acc = s.shots ? s.hits / s.shots : 0;
-  if (result === 'lost') {
-    ui.report = { comment: pick(LINES.gameover) };
+  const s = game.stats;
+  run.kills += s.kills;
+  if (result === 'won') {
+    // Straight on to the next level: no screen in between, just the card.
+    const bonus = Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 5) * level.score);
+    run.score += bonus;
+    run.checkpoint = run.score;
+    run.level++;
     recordScore(store, run);
-    setState('gameover');
+    startLevel(bonus);
   } else {
-    // The scanner's performance review: mostly how much reality is left, partly how well the player shot.
-    const mark = game.integrity * 0.6 + acc * 40;
-    const grade = mark >= 90 ? 'S' : mark >= 78 ? 'A' : mark >= 62 ? 'B' : mark >= 45 ? 'C' : 'D';
-    const score = Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 10 + Math.round(acc * 500)) * level.score);
-    run.score += score;
-    run.grades.push(grade);
-    ui.report = {
-      kills: s.kills, sealed: s.sealed, total: game.total,
-      integrity: Math.round(game.integrity), acc: Math.round(acc * 100),
-      score, grade, comment: pick(GRADES[grade]),
-    };
     recordScore(store, run);
-    setState('report');
+    ui.over = { level: run.level, score: run.score, kills: run.kills, comment: pick(LINES.gameover) };
+    setState('gameover');
+    scanner.speak(ui.over.comment);
   }
-  scanner.speak(ui.report.comment);
 }
 
 function pause() {
   if (ui.state !== 'play') return;
-  releaseTrigger(firePointer);
+  release();
   scanner.hush();
   setState('paused');
 }
@@ -185,20 +196,8 @@ function act(id) {
       store.difficulty = id;
       saveStore(store);
       break;
-    case 'begin':
-    case 'retry': startIncident(); break;
-    case 'continue':
-      scanner.hush();
-      if (run.incident === INCIDENTS.length - 1) { setState('victory'); scanner.speak(LINES.victory[0]); }
-      else setState('upgrade');
-      break;
-    case 'up_cool':
-    case 'up_beam':
-    case 'up_seal':
-      run.upgrades[id.slice(3)]++;
-      run.incident++;
-      setState('briefing');
-      break;
+    // Another go at the level that was lost, with the score as it stood when that level began.
+    case 'retry': run.score = run.checkpoint; startLevel(null); break;
     case 'resume': setState('play'); break;
     case 'recal': doRecalibrate(); if (ui.state === 'paused') setState('play'); break;
     case 'music': store.music = music.enabled = !store.music; saveStore(store); break;
@@ -224,33 +223,43 @@ function toCanvas(e) {
 
 const inside = (b, p) => p.x >= b.x && p.x < b.x + b.w && p.y >= b.y && p.y < b.y + b.h;
 
-// In play, the right grip is the fire button and a touch on the screen fires too. With
-// drag-to-look, a press on the screen that does not move fires on release; each finger is
-// tracked separately so one can look while the other thumb fires.
-canvas.addEventListener('pointerdown', e => {
-  if (ui.state !== 'play') return;
-  const hit = frameHit(toCanvas(e));
-  if (hit === 'full') return;      // handled on click, below
-  if (hit === 'fire') { pullTrigger(e.pointerId); return; }
-  else if (hit === 'pause') { play('ui'); pause(); }
-  else if (hit === 'recal') { play('ui'); doRecalibrate(); }
-  else if (hit) return;
-  else if (orient.mode === 'debug') drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
-  else pullTrigger(e.pointerId);
-});
-
-// Fire once, and remember the trigger is held: rapid fire keeps going until it is let go.
+// FIRE shoots once, and counts as held until it is let go, which is what rapid fire uses.
 function pullTrigger(id) {
   firePointer = id;
   game.trigger = true;
   game.fire();
 }
 
-function releaseTrigger(id) {
-  if (id !== firePointer) return;
-  firePointer = null;
-  if (game) game.trigger = false;
+// SEAL only does anything while it is held.
+function holdSeal(id) {
+  sealPointer = id;
+  game.sealing = true;
 }
+
+// Lets go of whichever buttons that finger (or key) was holding; with no id, of everything.
+function release(id) {
+  if (id === undefined || id === firePointer) { firePointer = null; if (game) game.trigger = false; }
+  if (id === undefined || id === sealPointer) { sealPointer = null; if (game) game.sealing = false; }
+}
+
+// In play the right grip is SEAL and FIRE, the left grip has the power-ups, and a touch on the
+// screen fires too. With drag-to-look, a press on the screen that does not move fires on
+// release, and the right mouse button is SEAL. Each finger is tracked separately so one can
+// look or hold SEAL while the other does something else.
+canvas.addEventListener('pointerdown', e => {
+  if (ui.state !== 'play') return;
+  const hit = frameHit(toCanvas(e));
+  if (hit === 'full') return;      // handled on click, below
+  if (hit === 'fire') pullTrigger(e.pointerId);
+  else if (hit === 'seal') holdSeal(e.pointerId);
+  else if (hit === 'pause') { play('ui'); pause(); }
+  else if (hit === 'recal') { play('ui'); doRecalibrate(); }
+  else if (hit?.startsWith('slot:')) game.use(hit.slice(5));
+  else if (hit) return;
+  else if (e.button === 2) holdSeal(e.pointerId);
+  else if (orient.mode === 'debug') drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
+  else pullTrigger(e.pointerId);
+});
 
 window.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id) return;
@@ -264,13 +273,13 @@ window.addEventListener('pointermove', e => {
 });
 
 window.addEventListener('pointerup', e => {
-  releaseTrigger(e.pointerId);
+  release(e.pointerId);
   if (!drag || e.pointerId !== drag.id) return;
   if (drag.moved < 6 && ui.state === 'play') game.fire();
   drag = null;
 });
 window.addEventListener('pointercancel', e => {
-  releaseTrigger(e.pointerId);
+  release(e.pointerId);
   if (drag && e.pointerId === drag.id) drag = null;
 });
 
@@ -281,25 +290,32 @@ canvas.addEventListener('click', e => {
   if (ui.state === 'play' || performance.now() - ui.since < 300) return;
   const b = ui.buttons.find(b => inside(b, p));
   if (b) { play('ui'); act(b.id); }
-  else if (ui.state === 'briefing') ui.t += 100;
 });
 
+// Keyboard: Space fires, E seals, 1-5 use the power-ups in the order of their buttons.
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.code === 'Space' && ui.state === 'play') { pullTrigger('key'); e.preventDefault(); }
-  else if (e.code === 'KeyP' || e.code === 'Escape') ui.state === 'paused' ? setState('play') : pause();
-  else if (e.code === 'KeyR' && ui.state === 'play') doRecalibrate();
-  else if (e.code === 'KeyF') toggleFullscreen();
-  else if (e.code === 'Enter' && ui.state !== 'play') {
+  const digit = /^Digit[1-9]$/.test(e.code) ? +e.code.slice(5) : 0;
+  if (ui.state === 'play') {
+    if (e.code === 'Space') { pullTrigger('space'); e.preventDefault(); }
+    else if (e.code === 'KeyE') holdSeal('seal-key');
+    else if (e.code === 'KeyR') doRecalibrate();
+    else if (digit && digit <= KINDS.length) game.use(KINDS[digit - 1]);
+  } else if (e.code === 'Enter') {
     const b = ui.buttons.find(b => b.primary);
     if (b) act(b.id);
-  } else if (DEBUG && ui.state === 'title' && /^Digit[1-5]$/.test(e.code)) {
-    params.set('incident', e.code.slice(5));
+  } else if (DEBUG && ui.state === 'title' && digit) {
+    // Development: start at a given level.
+    params.set('level', digit);
     start();
   }
+  if (e.code === 'KeyP' || e.code === 'Escape') ui.state === 'paused' ? setState('play') : pause();
+  else if (e.code === 'KeyF') toggleFullscreen();
 });
-
-window.addEventListener('keyup', e => { if (e.code === 'Space') releaseTrigger('key'); });
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') release('space');
+  else if (e.code === 'KeyE') release('seal-key');
+});
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => {
@@ -333,14 +349,15 @@ function tick(dt) {
     ui.buttons = [];
     game.update(dt);
     game.draw();
+    if (ui.card && (ui.card.t -= dt) > 0) drawLevelCard(ui.card);
     if (DEBUG) {
       const yaw = Math.round(((view.yaw / DEG) + 360) % 360), pitch = Math.round(view.pitch / DEG);
-      drawTextS(`YAW ${yaw} PITCH ${pitch} FPS ${Math.round(fps)}`, view.cx, R.view.y + 6, UI.mid, 1, 0.5);
+      drawTextS(`YAW ${yaw} PITCH ${pitch} FPS ${Math.round(fps)}`, R.view.x + R.view.w - 6, R.view.y + 6, UI.dim, 1, 1);
     }
     if (game.result) finish(game.result);
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, run, store, help: ui.help, report: ui.report, starting: ui.starting, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.
@@ -359,13 +376,15 @@ function frame(now) {
   tick(dt);
 }
 
-// Console handle for development: riftDebug.start(3), riftDebug.look(90, 0), riftDebug.step(5), riftDebug.game.
+// Console handle for development: riftDebug.start(3), riftDebug.look(90, 0), riftDebug.step(5),
+// riftDebug.game, riftDebug.run.
 if (DEBUG) {
   window.riftDebug = {
     get game() { return game; },
+    get run() { return run; },
     get state() { return ui.state; },
     look: debugAim,
-    start(incident = 1) { startDebug(); params.set('incident', incident); begin(); startIncident(); },
+    start(n = 1) { startDebug(); params.set('level', n); begin(); },
     step(seconds = 1) { for (let t = 0; t < seconds; t += 1 / 60) tick(1 / 60); },
   };
 }

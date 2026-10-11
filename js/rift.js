@@ -3,9 +3,9 @@
 
 import { RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR, level } from './config.js';
 import { DEG, dirFromBearing, onScreen, project, view } from './projection.js';
-import { R, line, px } from './render.js';
+import { R, disc, line, px, ring } from './render.js';
 import { DIMS } from './sprites.js';
-import { DIM_SPAWN } from './incidents.js';
+import { DIM_SPAWN } from './levels.js';
 import { play } from './audio/sfx.js';
 import { scanner } from './scanner.js';
 
@@ -17,7 +17,7 @@ const RESPITE = 3;         // seconds before the next arrival once a full rift h
 
 // The outline of one rift: a zig-zag spine with an uneven opening on either side of it, so it
 // reads as a fracture in the air (cracked glass, a lightning bolt) and never as a smooth oval.
-// Values are fractions that drawRiftShape scales. The spine passes through the rift's centre,
+// Values are fractions that the shard style scales. The spine passes through the rift's centre,
 // which is where creatures come out.
 export function makeShape() {
   const flip = Math.random() < 0.5 ? -1 : 1, r = (a, b) => a + Math.random() * (b - a);
@@ -28,73 +28,196 @@ export function makeShape() {
   return { spine, left, right, noise };
 }
 
-// Draws a rift at a screen position. s is pixels per world unit, k scales the whole shape
-// (opening and sealing animations). Each stage has its own art: a hairline crack, a narrow
-// jagged tear, and a wide breach whose edges crawl.
-export function drawRiftShape(cx, cy, s, width, t, ramp, shape, k = 1, deep = false) {
-  const ctx = R.ctx, { spine, left, right, noise } = shape, n = noise.length;
-  cx = Math.round(cx);
-  cy = Math.round(cy);
-  const stage = width < STAGE_TEAR ? 0 : width < STAGE_BREACH ? 1 : 2;
-  const hh = Math.max(2, Math.round((0.7 + 1.1 * width) * s * k));
-  const maxHw = stage ? (0.12 + (width - STAGE_TEAR) * 0.9) * s * k : 0;
-  // How far the spine zig-zags. A deep (boss-sized) rift keeps it tight so it stays on screen.
-  const sway = (2 + width * 10) * k + maxHw * (deep ? 0.12 : 0.22);
-  const thick = stage === 0 && width > 0.2 ? 2 : 1, edge = stage === 2 ? 2 : 1;
-  const crawl = stage === 2 ? (t * 8) | 0 : 0, flick = (t * 20) | 0, scroll = t * (stage === 2 ? 30 : 12);
-  const g = { x: 0, l: 0, r: 0 };
+// Rift art. Each dimension's rifts have their own look, not just their own colour, so the
+// player can tell what a rift is from across the room:
+//   shard   a zig-zag fracture in the air (Vesh, and the boss's rift)
+//   vortex  a round whirlpool with arms spiralling in (Ulta-9)
+//   slab    a tall, flat doorway of static that glitches sideways (The Hollow)
+//   prism   a diamond with facets flowing out of it (Miridian)
+// A style gives the rift's half-size for a given width (extent) and draws it (draw). Every
+// style has three looks: a faint crack, open, and wide open with its edges alive.
+const stageOf = width => (width < STAGE_TEAR ? 0 : width < STAGE_BREACH ? 1 : 2);
+const mod3 = n => ((n % 3) + 3) % 3;
 
-  // Geometry of one row: the spine and both edges, interpolated between knots.
-  const row = dy => {
-    const pos = ((dy + hh) / (2 * hh)) * (KNOTS - 1), i = Math.min(KNOTS - 2, pos | 0), f = pos - i;
-    g.x = cx + (spine[i] + (spine[i + 1] - spine[i]) * f) * sway;
-    const jl = stage === 2 ? noise[(dy + 512 + crawl) % n] * 1.5 : 0;
-    const jr = stage === 2 ? noise[(dy * 3 + 1536 + crawl) % n] * 1.5 : 0;
-    g.l = Math.round(g.x - (left[i] + (left[i + 1] - left[i]) * f) * maxHw + jl);
-    g.r = Math.max(g.l + thick, Math.round(g.x + (right[i] + (right[i + 1] - right[i]) * f) * maxHw + jr));
-    return g;
-  };
+const STYLES = {
+  shard: {
+    extent: (w, s) => ({ hw: w < STAGE_TEAR ? 3 : (0.12 + (w - STAGE_TEAR) * 0.9) * s, hh: (0.7 + 1.1 * w) * s }),
+    draw(ctx, cx, cy, hw, hh, width, t, ramp, shape, deep) {
+      const { spine, left, right, noise } = shape, n = noise.length;
+      const stage = stageOf(width);
+      const maxHw = stage ? hw : 0;
+      // How far the spine zig-zags. A deep (boss-sized) rift keeps it tight so it stays on screen.
+      const sway = (2 + width * 10) * Math.min(1, hh / 30) + maxHw * (deep ? 0.12 : 0.22);
+      const thick = stage === 0 && width > 0.2 ? 2 : 1, edge = stage === 2 ? 2 : 1;
+      const crawl = stage === 2 ? (t * 8) | 0 : 0, flick = (t * 20) | 0, scroll = t * (stage === 2 ? 30 : 12);
+      const g = { x: 0, l: 0, r: 0 };
 
-  for (let dy = -hh; dy <= hh; dy++) {
-    const { l, r } = row(dy), y = cy + dy;
-    ctx.fillStyle = ramp[1];
-    ctx.fillRect(l - 1, y, r - l + 2, 1);
-    ctx.fillStyle = ((dy * 7 + flick) & 7) === 0 ? '#ffffff' : ramp[3];
-    ctx.fillRect(l, y, r - l, 1);
-    if (r - l <= 2 * edge) continue;
-    // Inside: the dark of somewhere else, with scanlines drifting through it.
-    const band = Math.floor((dy + scroll) / 3);
-    ctx.fillStyle = band % 7 === 0 && !deep ? ramp[1] : band % 3 === 0 ? ramp[0] : VOID;
-    ctx.fillRect(l + edge, y, r - l - 2 * edge, 1);
-  }
-  if (!stage) {
-    if (Math.random() < 0.3) px(cx + (Math.random() * 12 - 6), cy + (Math.random() * 2 - 1) * hh, 1, 1, ramp[3]);
-    return;
-  }
+      // Geometry of one row: the spine and both edges, interpolated between knots.
+      const row = dy => {
+        const pos = ((dy + hh) / (2 * hh)) * (KNOTS - 1), i = Math.min(KNOTS - 2, pos | 0), f = pos - i;
+        g.x = cx + (spine[i] + (spine[i + 1] - spine[i]) * f) * sway;
+        const jl = stage === 2 ? noise[(dy + 512 + crawl) % n] * 1.5 : 0;
+        const jr = stage === 2 ? noise[(dy * 3 + 1536 + crawl) % n] * 1.5 : 0;
+        g.l = Math.round(g.x - (left[i] + (left[i + 1] - left[i]) * f) * maxHw + jl);
+        g.r = Math.max(g.l + thick, Math.round(g.x + (right[i] + (right[i + 1] - right[i]) * f) * maxHw + jr));
+        return g;
+      };
 
-  // Distant lights in the dark.
-  for (let m = 0; m < 5; m++) {
-    const { l, r } = row(Math.round(noise[m * 5 + 3] * hh * 0.8));
-    if (r - l > 6 && ((t * 2 + m * 1.7) | 0) % 3) {
-      px(l + 3 + (noise[m * 3 + 1] * 0.5 + 0.5) * (r - l - 6), cy + noise[m * 5 + 3] * hh * 0.8, 1, 1, m & 1 ? ramp[3] : ramp[2]);
-    }
-  }
-  // Hairline fractures branching off each corner of the zig-zag.
-  const reach = maxHw * (stage === 2 ? 0.5 : 0.3) + 2 + width * 4;
-  for (let i = 1; i < KNOTS - 1; i++) {
-    if (i === MID) continue;
-    const dy = Math.round(-hh + (i / (KNOTS - 1)) * 2 * hh), side = spine[i] < 0 ? -1 : 1, up = noise[i] < 0 ? -1 : 1;
-    const { l, r } = row(dy), x0 = side < 0 ? l : r, y0 = cy + dy;
-    const x1 = x0 + side * reach * 0.6, y1 = y0 + up * reach * 0.35;
-    line(x0, y0, x1, y1, ramp[2]);
-    line(x1, y1, x1 + side * reach * 0.4, y1 - up * reach * 0.15, ramp[1]);
-  }
-  // Sparks off the edges.
-  for (let i = stage === 2 ? 3 : 1; i > 0; i--) {
-    if (Math.random() < 0.5) continue;
-    const dy = Math.round((Math.random() * 2 - 1) * hh), { l, r } = row(dy);
-    px(Math.random() < 0.5 ? l - 2 - Math.random() * 4 : r + 2 + Math.random() * 4, cy + dy, 1, 1, '#ffffff');
-  }
+      for (let dy = -hh; dy <= hh; dy++) {
+        const { l, r } = row(dy), y = cy + dy;
+        ctx.fillStyle = ramp[1];
+        ctx.fillRect(l - 1, y, r - l + 2, 1);
+        ctx.fillStyle = ((dy * 7 + flick) & 7) === 0 ? '#ffffff' : ramp[3];
+        ctx.fillRect(l, y, r - l, 1);
+        if (r - l <= 2 * edge) continue;
+        // Inside: the dark of somewhere else, with scanlines drifting through it.
+        const band = Math.floor((dy + scroll) / 3);
+        ctx.fillStyle = band % 7 === 0 && !deep ? ramp[1] : band % 3 === 0 ? ramp[0] : VOID;
+        ctx.fillRect(l + edge, y, r - l - 2 * edge, 1);
+      }
+      if (!stage) {
+        if (Math.random() < 0.3) px(cx + (Math.random() * 12 - 6), cy + (Math.random() * 2 - 1) * hh, 1, 1, ramp[3]);
+        return;
+      }
+
+      // Distant lights in the dark.
+      for (let m = 0; m < 5; m++) {
+        const { l, r } = row(Math.round(noise[m * 5 + 3] * hh * 0.8));
+        if (r - l > 6 && ((t * 2 + m * 1.7) | 0) % 3) {
+          px(l + 3 + (noise[m * 3 + 1] * 0.5 + 0.5) * (r - l - 6), cy + noise[m * 5 + 3] * hh * 0.8, 1, 1, m & 1 ? ramp[3] : ramp[2]);
+        }
+      }
+      // Hairline fractures branching off each corner of the zig-zag.
+      const reach = maxHw * (stage === 2 ? 0.5 : 0.3) + 2 + width * 4;
+      for (let i = 1; i < KNOTS - 1; i++) {
+        if (i === MID) continue;
+        const dy = Math.round(-hh + (i / (KNOTS - 1)) * 2 * hh), side = spine[i] < 0 ? -1 : 1, up = noise[i] < 0 ? -1 : 1;
+        const { l, r } = row(dy), x0 = side < 0 ? l : r, y0 = cy + dy;
+        const x1 = x0 + side * reach * 0.6, y1 = y0 + up * reach * 0.35;
+        line(x0, y0, x1, y1, ramp[2]);
+        line(x1, y1, x1 + side * reach * 0.4, y1 - up * reach * 0.15, ramp[1]);
+      }
+      // Sparks off the edges.
+      for (let i = stage === 2 ? 3 : 1; i > 0; i--) {
+        if (Math.random() < 0.5) continue;
+        const dy = Math.round((Math.random() * 2 - 1) * hh), { l, r } = row(dy);
+        px(Math.random() < 0.5 ? l - 2 - Math.random() * 4 : r + 2 + Math.random() * 4, cy + dy, 1, 1, '#ffffff');
+      }
+    },
+  },
+
+  vortex: {
+    extent: (w, s) => ({ hw: (0.4 + 0.75 * w) * s, hh: (0.4 + 0.75 * w) * s }),
+    draw(ctx, cx, cy, hw, hh, width, t, ramp) {
+      const stage = stageOf(width), r = Math.max(3, Math.round(hh));
+      if (!stage) {
+        // An unstable ring that keeps trying to form.
+        const q = Math.round(r * 0.55), a0 = t * 4;
+        ring(cx, cy, q + 1, a0, a0 + 4.4, ramp[1]);
+        ring(cx, cy, q, a0, a0 + 4.4, ((t * 20) | 0) & 3 ? ramp[3] : '#ffffff');
+        return;
+      }
+      const edge = stage === 2 ? 3 : 2;
+      disc(cx, cy, r + 1, ramp[1]);
+      disc(cx, cy, r, ramp[3]);
+      disc(cx, cy, r - edge, VOID);
+      // Arms winding in toward the centre; more of them, turning faster, when wide open.
+      const arms = stage === 2 ? 4 : 3, spin = t * (stage === 2 ? 3.2 : 1.7), reach = r - edge - 1;
+      for (let a = 0; a < arms; a++) {
+        for (let i = 0; i < 28; i++) {
+          const u = i / 28, ang = spin + (a * 6.283) / arms + u * 4.4, rr = reach * (1 - u), sz = u < 0.45 ? 2 : 1;
+          px(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr, sz, sz, u < 0.3 ? ramp[2] : u < 0.65 ? ramp[1] : ramp[0]);
+        }
+      }
+      px(cx - 1, cy - 1, 3, 3, ramp[0]);
+      // Motes circling just outside the rim.
+      for (let i = 0; i < 9; i++) {
+        const ang = i * 0.7 - t * 0.9, rr = r + 3 + Math.sin(t * 5 + i) * 1.5;
+        px(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr, 1, 1, i % 3 ? ramp[2] : '#ffffff');
+      }
+    },
+  },
+
+  slab: {
+    extent: (w, s) => ({ hw: (0.08 + 0.5 * w) * s, hh: (0.8 + 1.0 * w) * s }),
+    draw(ctx, cx, cy, hw, hh, width, t, ramp) {
+      const stage = stageOf(width), tick = (t * 10) | 0;
+      hw = Math.max(1, Math.round(stage ? hw : 1));
+      hh = Math.round(hh);
+      // Whole bands of rows jump sideways, like a bad signal.
+      const slip = dy => {
+        const band = (dy + 4096) >> 2, h = (band * 37 + tick * 53) % 23;
+        return h < (stage === 2 ? 5 : 2) ? ((band * 13 + tick) % 7) - 3 : 0;
+      };
+      for (let dy = -hh; dy <= hh; dy++) {
+        const x = cx - hw + slip(dy), y = cy + dy, w = hw * 2;
+        ctx.fillStyle = ramp[1];
+        ctx.fillRect(x - 1, y, w + 2, 1);
+        ctx.fillStyle = ramp[3];
+        ctx.fillRect(x, y, w, 1);
+        if (!stage || w <= 4) continue;
+        ctx.fillStyle = VOID;
+        ctx.fillRect(x + 2, y, w - 4, 1);
+        // Static inside.
+        for (let i = 0; i < 2; i++) {
+          if (Math.random() < 0.5) continue;
+          ctx.fillStyle = Math.random() < 0.3 ? ramp[2] : ramp[0];
+          ctx.fillRect(x + 2 + ((Math.random() * (w - 5)) | 0), y, 1 + ((Math.random() * 2) | 0), 1);
+        }
+      }
+      // A hard lintel and sill, and a scan bar travelling down the doorway.
+      px(cx - hw - 3, cy - hh - 1, hw * 2 + 6, 2, ramp[3]);
+      px(cx - hw - 3, cy + hh, hw * 2 + 6, 2, ramp[3]);
+      if (stage) px(cx - hw + 2, cy - hh + ((t * (stage === 2 ? 70 : 40)) % (hh * 2)), hw * 2 - 4, 1, ramp[2]);
+    },
+  },
+
+  prism: {
+    extent: (w, s) => ({ hw: (0.22 + 0.7 * w) * s, hh: (0.55 + 0.9 * w) * s }),
+    draw(ctx, cx, cy, hw, hh, width, t, ramp) {
+      const stage = stageOf(width), edge = stage === 2 ? 2 : 1;
+      hh = Math.max(3, Math.round(hh));
+      const flow = t * (stage === 2 ? 1.8 : 0.9), F = Math.floor(flow), frac = flow - F;
+      const facets = [ramp[0], VOID, ramp[1]];
+      for (let dy = -hh; dy <= hh; dy++) {
+        const v = Math.abs(dy) / hh, half = Math.round(hw * (1 - v)), y = cy + dy;
+        ctx.fillStyle = ramp[1];
+        ctx.fillRect(cx - half - 1, y, half * 2 + 3, 1);
+        ctx.fillStyle = ((dy * 5 + ((t * 20) | 0)) & 7) === 0 ? '#ffffff' : ramp[3];
+        ctx.fillRect(cx - half, y, half * 2 + 1, 1);
+        if (!stage || half <= edge) continue;
+        ctx.fillStyle = facets[mod3(3 - F)];
+        ctx.fillRect(cx - half + edge, y, half * 2 + 1 - 2 * edge, 1);
+        // Smaller diamonds growing outward from the centre.
+        for (let i = 2; i >= 0; i--) {
+          const q = (i + frac) / 3, inner = Math.round(hw * (q - v)) - edge;
+          if (inner < 1) continue;
+          ctx.fillStyle = facets[mod3(i - F)];
+          ctx.fillRect(cx - inner, y, inner * 2 + 1, 1);
+        }
+      }
+      if (!stage) return;
+      // Shards hanging off each point of the diamond.
+      const bob = Math.sin(t * 2.4) * 2;
+      for (const [sx, sy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = cx + sx * (hw + 6 + bob), y = cy + sy * (hh + 6 + bob);
+        px(x - 1, y, 3, 1, ramp[2]);
+        px(x, y - 1, 1, 3, ramp[2]);
+      }
+    },
+  },
+};
+
+// Half-width and half-height of a rift of the given style and width, at s pixels per world unit.
+export function riftExtent(style, width, s) {
+  return STYLES[style].extent(width, s);
+}
+
+// Draws a rift at a screen position. s is pixels per world unit; k scales the whole shape
+// (opening and sealing animations); deep keeps the inside dark for the boss to stand in.
+export function drawRift(style, cx, cy, s, width, t, ramp, shape, k = 1, deep = false) {
+  const { hw, hh } = riftExtent(style, width, s);
+  STYLES[style].draw(R.ctx, Math.round(cx), Math.round(cy), hw * k, Math.max(2, Math.round(hh * k)), width, t, ramp, shape, deep);
 }
 
 // Something about to come through: eyes in the dark and claws hooking over the edges of the
@@ -135,6 +258,7 @@ export class Rift {
     this.bossLock = !!def.boss;
     this.kills = 0;
 
+    this.style = DIMS[def.dim].rift;
     this.shape = makeShape();
     this.seed = Math.random() * 6.28;
     this.t = 0;
@@ -170,8 +294,9 @@ export class Rift {
     if (this.flare > 0) this.flare -= dt;
     const p = project(this.dir, this.p);
     const s = (view.f / RIFT_DIST) * this.size, st = this.stage;
-    this.hh = (0.7 + 1.1 * this.width) * s;
-    this.hw = st === 0 ? 3 : (0.12 + (this.width - STAGE_TEAR) * 0.9) * s;
+    const size = riftExtent(this.style, this.width, s);
+    this.hw = size.hw;
+    this.hh = size.hh;
     this.on = onScreen(p, this.hw, this.hh);
     if (this.sealed) { this.sealAnim += dt; return; }
 
@@ -208,7 +333,7 @@ export class Rift {
     if (room <= 0) { this.spawnT = Math.max(this.spawnT, RESPITE); return; }
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
-    // Pick what comes through, from the types this incident allows.
+    // Pick what arrives, from the types this level allows.
     const options = sp.spawns.filter(o => this.game.allows(o.type)
       && (!o.limit || this.game.creatures.filter(c => c.rift === this && c.def.sprite === o.type).length < o.limit));
     let roll = Math.random() * options.reduce((sum, o) => sum + o.weight, 0);
@@ -262,7 +387,7 @@ export class Rift {
     const ramp = DIMS[this.dim].ramp;
     // Flares a shade brighter for a moment after swallowing a shot.
     const lit = this.flare > 0 ? [ramp[1], ramp[2], ramp[3], '#ffffff'] : ramp;
-    drawRiftShape(this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
+    drawRift(this.style, this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
       this.sealed ? SEAL_RAMP : lit, this.shape, k, this.size > 1);
     // Strength gauge: how hard the other side is still holding the rift open. It drains as the
     // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.

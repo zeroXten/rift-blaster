@@ -1,8 +1,8 @@
-// One incident in play: its rifts, creatures, weapon and effects, from the first rift opening
+// One level in play: its rifts, creatures, weapon and effects, from the first rift opening
 // to the last one sealed or Reality Integrity reaching zero.
 
 import { MAX_CREATURES, PITCH_LIMIT, level } from './config.js';
-import { DEG, wrapAngle } from './projection.js';
+import { DEG, view, wrapAngle } from './projection.js';
 import { R, cameraFrame, debugBackdrop, px } from './render.js';
 import { camera } from './video.js';
 import { recalibrate } from './orientation.js';
@@ -10,7 +10,7 @@ import { Rift } from './rift.js';
 import { CREATURES } from './creatures/index.js';
 import { Weapon } from './weapon.js';
 import { Fx } from './fx.js';
-import { POWERUPS, Pickup } from './pickups.js';
+import { MAX_HELD, POWERUPS, Pickup } from './pickups.js';
 import { drawHud } from './hud.js';
 import { drawIndicators } from './indicators.js';
 import { play } from './audio/sfx.js';
@@ -21,10 +21,13 @@ import { rand, vibrate } from './util.js';
 const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
 export class Game {
-  constructor(incident, upgrades) {
-    this.incident = incident;
+  // def is a level from levels.js. integrity and inv (power-ups held, by kind) carry over
+  // from the level before.
+  constructor(def, { integrity = 100, inv }) {
+    this.def = def;
     this.t = 0;
-    this.integrity = 100;
+    this.integrity = integrity;
+    this.inv = inv;
     this.rifts = [];
     this.creatures = [];
     this.pickups = [];
@@ -33,13 +36,14 @@ export class Game {
     this.stasis = 0;          // seconds creatures and rifts stay frozen
     this.charge = false;      // a rift charge is loaded: the next shot into a rift closes it
     this.trigger = false;
+    this.sealing = false;     // the SEAL button is being held
     this.banner = null;       // { text, color, t }: the name of a power-up just taken
     this.dropT = -99;
     this.sinceDrop = 0;
-    this.pending = incident.rifts.slice().sort((a, b) => a.at - b.at);
+    this.pending = def.rifts.slice().sort((a, b) => a.at - b.at);
     this.total = this.pending.length;
     this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
-    this.weapon = new Weapon(upgrades);
+    this.weapon = new Weapon();
     this.fx = new Fx();
     this.emitted = {};
     this.streak = 0;
@@ -48,16 +52,16 @@ export class Game {
     this.lowWarned = false;
     this.ending = null;       // 'won' | 'lost' while the last effects play out
     this.endT = 0;
-    this.result = null;       // set when the incident is over
-    // Rift bearings are relative to wherever the player is facing as the incident starts.
+    this.result = null;       // set when the level is over
+    // Rift bearings are relative to wherever the player is facing as the level starts.
     recalibrate();
   }
 
-  // First-occurrence game events. An incident can attach a scanner line to any of them.
+  // First-occurrence game events. A level can attach a scanner line to any of them.
   emit(name) {
     if (this.emitted[name]) return;
     this.emitted[name] = true;
-    const hint = this.incident.hints?.[name];
+    const hint = this.def.hints?.[name];
     if (hint) scanner.show(hint, true);
   }
 
@@ -68,9 +72,9 @@ export class Game {
     return Math.min(level.alive - live, MAX_CREATURES - this.creatures.length);
   }
 
-  // Does this incident include that kind of creature yet?
+  // Does this level include that kind of creature yet?
   allows(type) {
-    return !this.incident.types || this.incident.types.includes(type);
+    return !this.def.types || this.def.types.includes(type);
   }
 
   spawn(type, rift, opts) {
@@ -93,66 +97,83 @@ export class Game {
     this.rifts.push(rift);
     play('crack', rift.p.pan);
     if (def.boss) this.spawn('ummagog', rift);
-    else if (this.rifts.length > 1 || !this.incident.hints) scanner.say(rift.p.front ? 'riftOpen' : 'riftBehind');
+    else if (this.rifts.length > 1 || !this.def.hints) scanner.say(rift.p.front ? 'riftOpen' : 'riftBehind');
   }
 
   onKill(creature) {
     this.stats.kills++;
     const rift = creature.rift;
-    if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.incident.hints) scanner.say('weak', true);
+    if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.def.hints) scanner.say('weak', true);
     this.emit('firstKill');
     if (++this.streak % 6 === 0) scanner.say('streak');
     if (this.rifts.some(r => r.lockKills && r.kills === r.lockKills)) this.emit('unlocked');
     this.maybeDrop(creature);
   }
 
-  // Now and then a shot creature leaves a power-up hanging where it died.
+  // Fairly often a shot creature leaves a power-up, off to one side of where it died.
   maybeDrop(creature) {
-    if (this.incident.noDrops || creature.pods || this.ending) return;
+    if (this.def.noDrops || creature.pods || this.ending) return;
     this.sinceDrop++;
-    if (this.t - this.dropT < 6 || this.pickups.length >= 2) return;
-    if (Math.random() > 0.1 * level.drops && this.sinceDrop < 9) return;
-    // Health turns up when it is needed, and a rift charge only when there is a rift to use it on.
-    const weight = kind => (kind === 'health' ? (this.integrity > 90 ? 0 : this.integrity < 50 ? 4 : 1.5)
-      : kind === 'charge' ? (this.charge || !this.rifts.some(r => !r.sealed && !r.def.boss) ? 0 : POWERUPS.charge.weight)
+    if (this.t - this.dropT < 4 || this.pickups.length >= 2) return;
+    if (Math.random() > 0.22 * level.drops && this.sinceDrop < 6) return;
+    // Health turns up when it is needed; nothing turns up that the player is already full of.
+    const weight = kind => (this.inv[kind] >= MAX_HELD ? 0
+      : kind === 'health' ? (this.integrity < 50 ? 4 : this.integrity < 85 ? 2 : 0.5)
       : POWERUPS[kind].weight);
     const kinds = Object.keys(POWERUPS);
     let roll = Math.random() * kinds.reduce((sum, k) => sum + weight(k), 0);
-    const kind = kinds.find(k => (roll -= weight(k)) < 0) || 'rapid';
-    this.pickups.push(new Pickup(kind, creature.yaw, creature.pitch));
+    const kind = kinds.find(k => (roll -= weight(k)) < 0);
+    if (!kind) return;
+    const side = Math.random() < 0.5 ? -1 : 1;
+    this.pickups.push(new Pickup(kind, creature.yaw + side * rand(11, 17) * DEG, creature.pitch + rand(-7, 7) * DEG));
     this.dropT = this.t;
     this.sinceDrop = 0;
     play('drop', creature.p.pan);
     scanner.say('drop');
   }
 
-  // The player shot a power-up.
+  // The player shot a power-up: it goes into the inventory for later.
   collect(item) {
     const def = item.def;
     item.taken = true;
-    this.banner = { text: def.name, color: def.color, t: 1.8 };
+    this.inv[item.kind] = Math.min(MAX_HELD, this.inv[item.kind] + 1);
+    this.banner = { text: '+ ' + def.name, color: def.color, t: 1.6 };
     this.fx.burst(item.p.x, item.p.y, [def.color, '#ffffff'], 14, 70);
     play('pickup');
     vibrate(30);
-    scanner.say(item.kind, true);
-    if (item.kind === 'rapid') { this.rapid = def.time; this.weapon.cool(); }
-    else if (item.kind === 'health') this.integrity = Math.min(100, this.integrity + 25);
-    else if (item.kind === 'stasis') { this.stasis = def.time; play('stasis'); }
-    else if (item.kind === 'charge') this.charge = true;
-    else this.blast(item);
+    scanner.say('got');
   }
 
-  // A grenade going off: every creature out in the open near it is destroyed.
-  blast(item) {
-    const d = item.dir;
+  // A power-up button was pressed.
+  use(kind) {
+    const def = POWERUPS[kind];
+    if (this.ending) return;
+    if (!this.inv[kind]) { play('denied'); scanner.say('empty'); return; }
+    if (kind === 'health' && this.integrity >= 100) { play('denied'); scanner.say('full'); return; }
+    this.inv[kind]--;
+    this.banner = { text: def.name, color: def.color, t: 1.4 };
+    play('pickup');
+    vibrate(30);
+    scanner.say(kind, true);
+    if (kind === 'rapid') { this.rapid = def.time; this.weapon.cool(); }
+    else if (kind === 'health') this.integrity = Math.min(100, this.integrity + 25);
+    else if (kind === 'stasis') { this.stasis = def.time; play('stasis'); }
+    else if (kind === 'charge') this.charge = true;
+    else this.blast();
+  }
+
+  // A grenade, thrown where the scanner is pointing: every creature out in the open near
+  // that spot is destroyed.
+  blast() {
+    const d = view.fwd;
     for (const c of this.creatures.slice()) {
       if (c.pods) { c.blasted(); continue; }
       if (c.state !== 'active') continue;
       const cos = d[0] * c.dir[0] + d[1] * c.dir[1] + d[2] * c.dir[2];
       if (Math.acos(Math.max(-1, Math.min(1, cos))) < BLAST) { c.hp = 0; c.die(true); }
     }
-    this.fx.nova(item.p.x, item.p.y, ['#ff3b3b', '#ffd23f', '#ffffff']);
-    play('nova', item.p.pan);
+    this.fx.nova(view.cx, view.cy, ['#ff3b3b', '#ffd23f', '#ffffff']);
+    play('nova');
     vibrate([60, 30, 120]);
   }
 
@@ -176,7 +197,7 @@ export class Game {
 
   damage(amount, source) {
     if (this.ending) return;
-    this.integrity = Math.max(0, this.integrity - amount * level.damage * (this.incident.damageScale ?? 1));
+    this.integrity = Math.max(0, this.integrity - amount * level.damage);
     this.streak = 0;
     this.fx.hurt();
     play('damage', source?.p.pan);
@@ -196,9 +217,9 @@ export class Game {
     const open = this.rifts.reduce((n, r) => n + !r.sealed, 0);
     this.quiet = open ? 0 : this.quiet + dt;
     const next = this.pending[0];
-    const room = Math.min(this.incident.maxOpen || 3, level.maxOpen) - open;
-    if (next && !this.ending && room > 0 && (this.t >= next.at * level.gap || this.quiet > 1 * level.gap)) {
-      // Rifts scheduled for the same moment open together, as far as the difficulty allows.
+    const room = level.maxOpen - open;
+    if (next && !this.ending && room > 0 && (this.t >= next.at || this.quiet > 1)) {
+      // Rifts scheduled for the same moment open together, as far as the level allows.
       for (let n = 0; n < room && this.pending[0]?.at === next.at; n++) this.openRift(this.pending.shift());
     }
 

@@ -1,5 +1,7 @@
-// Power-ups. A creature sometimes leaves one behind when it is shot; it hangs in the air where
-// the creature died and is taken by shooting it, before it fades.
+// Power-ups. A creature sometimes leaves one behind when it is shot. It appears a little way
+// off from where the creature died, so it is not picked up by accident, and hangs there until
+// it is shot or fades. Collected power-ups are kept (up to MAX_HELD of each) and used from the
+// buttons on the scanner's left grip.
 
 import { UI } from './config.js';
 import { DEG, dirFromBearing, onScreen, project, view } from './projection.js';
@@ -18,7 +20,8 @@ export const POWERUPS = {
 
 export const powerIcon = kind => getSprite(POWERUPS[kind].icon, 'vesh').frames[0];
 
-const LIFE = 10;
+export const MAX_HELD = 3;
+const LIFE = 12, ARMING = 0.5;      // seconds it lasts; seconds before it can be collected
 
 export class Pickup {
   constructor(kind, yaw, pitch) {
@@ -45,14 +48,15 @@ export class Pickup {
 
   // Is the crosshair on it? tolPx is the weapon's tolerance in pixels.
   aimed(tolPx) {
-    return this.on && Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < 11 + tolPx;
+    return this.on && this.t > ARMING && Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < 11 + tolPx;
   }
 
   draw() {
     // Blinks through its last three seconds.
     if (!this.on || (this.life < 3 && ((this.t * 8) | 0) & 1)) return;
     const x = Math.round(this.p.x), y = Math.round(this.p.y), c = this.def.color;
-    box(x - 10, y - 10, 21, 21, UI.k, c);
+    // Flashes white as it appears.
+    box(x - 10, y - 10, 21, 21, this.t < 0.25 ? '#ffffff' : UI.k, c);
     blit(powerIcon(this.kind), x + 0.5, y + 0.5, 2);
     // Corner brackets that pulse, so it reads as something to shoot.
     const d = 13 + (((this.t * 4) | 0) & 1);

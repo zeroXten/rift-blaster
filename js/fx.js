@@ -25,6 +25,7 @@ export class Fx {
     this.white = 0;
     this.steam = false;   // set by the weapon while overheated
     this.rings = [];      // expanding shockwaves: { x, y, t, colors }
+    this.sealing = 0;     // seal progress while the seal beam is on, set by the weapon
   }
 
   add(x, y, vx, vy, life, color, size = 1, grav = 0) {
@@ -106,6 +107,15 @@ export class Fx {
       ring(r.x, r.y, 3 + k * 45, 0, 6.3, r.colors[n - 2] || r.colors[0]);
     }
     if (this.zapT > 0) line(this.zx, this.zy, view.cx, by, ((this.zapT * 40) | 0) & 1 ? '#ffe9a0' : '#ffa91f', 2);
+    if (this.sealing > 0) {
+      // The seal beam: a steady thread of stitches running up to the rift, nothing like a shot.
+      const cx = Math.round(view.cx), top = Math.round(view.cy), run = (performance.now() / 12) | 0;
+      for (let y = by - 1; y > top; y--) {
+        const d = (by - y + run) % 10;
+        if (d < 6) px(cx - (d < 3 ? 1 : 0), y, d < 3 ? 3 : 1, 1, d < 3 ? '#ffffff' : UI.c);
+      }
+      px(cx - 2, top - 2, 5, 5, ((run >> 2) & 1) ? '#ffffff' : UI.c);
+    }
     if (this.bolt) this.drawBeam(this.bolt, by);
     if (this.red > 0) {
       ctx.globalAlpha = (this.red / 0.45) * 0.45;

@@ -1,23 +1,27 @@
 // The scanner's casing: the border around the screen that makes the phone read as a device.
-// Thin strips above and below the screen carry the gauges; the grips either side carry the
-// controls, with the fire button under the right thumb. Drawn over the edges of the world,
-// so anything that strays off the screen disappears behind it.
+// Thin strips above and below the screen carry the gauges. The left grip has the system keys
+// and one button per power-up; the right grip has SEAL and FIRE under the right thumb. It is
+// drawn over the edges of the world, so anything that strays off the screen disappears behind it.
 
 import { UI } from './config.js';
-import { R, box, disc, px, ring } from './render.js';
+import { R, blit, box, disc, px, ring } from './render.js';
 import { drawText } from './font.js';
 import { fullscreen } from './fullscreen.js';
+import { POWERUPS, powerIcon } from './pickups.js';
 
 const CASE = '#1b2030', KEY = '#262c40', LIGHT = '#3a4460', DARK = '#0a0c14', GROOVE = '#141826';
+const KINDS = Object.keys(POWERUPS);
 
 // Where the controls are drawn.
 function controls() {
-  const v = R.view;
+  const v = R.view, x = v.x - 28, rx = v.x + v.w + 22;
   return {
-    pause: { x: v.x - 28, y: v.y + 6, w: 24, h: 22 },
-    recal: { x: v.x - 28, y: v.y + 36, w: 24, h: 22 },
-    full: { x: v.x - 28, y: v.y + 66, w: 24, h: 22 },
-    fire: { x: v.x + v.w + 22, y: Math.round(R.h * 0.56), r: 17 },
+    pause: { x, y: v.y + 3, w: 24, h: 15 },
+    recal: { x, y: v.y + 20, w: 24, h: 15 },
+    full: { x, y: v.y + 37, w: 24, h: 15 },
+    slots: KINDS.map((kind, i) => ({ kind, x, y: v.y + 58 + i * 31, w: 24, h: 27 })),
+    seal: { x: rx, y: Math.round(R.h * 0.27), r: 13 },
+    fire: { x: rx, y: Math.round(R.h * 0.62), r: 17 },
   };
 }
 
@@ -30,24 +34,42 @@ export function gauges() {
   };
 }
 
-// What a touch at canvas point p lands on: 'fire', 'pause', 'recal', 'full' (the full-screen
-// key, which works on every screen), 'case' (dead casing), or null for the screen itself. Touch targets are much larger than the drawn controls: the whole
-// right grip fires.
+// What a touch at canvas point p lands on: 'fire', 'seal', 'pause', 'recal', 'full' (the
+// full-screen key, which works on every screen), 'slot:<kind>' for a power-up button, 'case'
+// (dead casing), or null for the screen itself. Touch targets are larger than the drawn
+// controls: the whole right grip is SEAL above and FIRE below.
 export function frameHit(p) {
   const v = R.view;
-  if (p.x >= v.x + v.w) return 'fire';
-  if (p.x < v.x) return p.y < v.y + 32 ? 'pause' : p.y < v.y + 64 ? 'recal' : p.y < v.y + 96 ? 'full' : 'case';
+  if (p.x >= v.x + v.w) return p.y < R.h * 0.44 ? 'seal' : 'fire';
+  if (p.x < v.x) {
+    const y = p.y - v.y;
+    if (y < 19) return 'pause';
+    if (y < 36) return 'recal';
+    if (y < 55) return 'full';
+    const i = Math.floor((y - 56) / 31);
+    return i >= 0 && i < KINDS.length ? 'slot:' + KINDS[i] : 'case';
+  }
   return p.y < v.y || p.y >= v.y + v.h ? 'case' : null;
 }
 
-function keycap(b, lit) {
+function keycap(b, edge) {
   px(b.x, b.y + 1, b.w, b.h, DARK);
-  box(b.x, b.y, b.w, b.h - 1, KEY, lit ? LIGHT : GROOVE);
+  box(b.x, b.y, b.w, b.h - 1, KEY, edge);
 }
 
-// live: in play, so the controls are lit. pressed / hot: the fire button's state. led: status light colour.
-export function drawFrame({ live = false, pressed = false, hot = false, led = UI.dim } = {}) {
-  const { w, h, view: v } = R, vr = v.x + v.w, vb = v.y + v.h;
+// A round button, sunk a pixel while pressed.
+function button(b, pressed, rim, body, top, label, ink) {
+  const d = pressed ? 1 : 0;
+  disc(b.x, b.y + 2, b.r + 3, DARK);
+  disc(b.x, b.y + d, b.r, rim);
+  disc(b.x - 1, b.y - 2 + d * 2, b.r - 3, pressed ? top : body);
+  drawText(label, b.x + 1, b.y - 4 + d, ink, 1, 0.5);
+}
+
+// live: in play, so the controls are lit. pressed / sealing: FIRE / SEAL held. hot: overheated.
+// led: status light colour. inv: power-ups held, by kind. active: power-ups in force, by kind.
+export function drawFrame({ live = false, pressed = false, sealing = false, hot = false, led = UI.dim, inv = null, active = {} } = {}) {
+  const { ctx, w, h, view: v } = R, vr = v.x + v.w, vb = v.y + v.h;
   const c = controls(), g = gauges(), blink = ((performance.now() / 160) | 0) & 1;
 
   // Body, with a lit top edge and a shadowed bottom edge.
@@ -58,10 +80,9 @@ export function drawFrame({ live = false, pressed = false, hot = false, led = UI
   px(0, 0, w, 1, LIGHT);
   px(0, h - 1, w, 1, DARK);
 
-  // Grip ridges where the hands go.
-  for (let y = c.full.y + c.full.h + 10; y < vb - 22; y += 3) px(5, y, v.x - 12, 1, GROOVE);
-  for (let y = v.y + 6; y < vb - 4; y += 3) {
-    if (Math.abs(y - c.fire.y) > c.fire.r + 7) px(vr + 7, y, w - vr - 12, 1, GROOVE);
+  // Grip ridges on the right, around the buttons.
+  for (let y = v.y + 6; y < vb - 24; y += 3) {
+    if (Math.abs(y - c.fire.y) > c.fire.r + 7 && Math.abs(y - c.seal.y) > c.seal.r + 7) px(vr + 7, y, w - vr - 12, 1, GROOVE);
   }
   for (const [x, y] of [[3, 3], [w - 6, 3], [3, h - 6], [w - 6, h - 6]]) {
     px(x, y, 3, 3, DARK);
@@ -86,32 +107,40 @@ export function drawFrame({ live = false, pressed = false, hot = false, led = UI
   drawText('HEAT', g.heat.x, g.heat.y, LIGHT);
   box(g.heat.bar, g.heat.y - 1, g.heat.barW, 9, UI.k, DARK);
 
-  // Left grip: pause, recalibrate, full screen, status light.
+  // Left grip, top: pause, recalibrate, full screen.
   const ink = live ? UI.c : LIGHT;
-  keycap(c.pause, live);
-  px(c.pause.x + 8, c.pause.y + 6, 3, 9, ink);
-  px(c.pause.x + 13, c.pause.y + 6, 3, 9, ink);
-  keycap(c.recal, live);
-  ring(c.recal.x + 12, c.recal.y + 11, 5, 0, 6.3, ink);
-  px(c.recal.x + 12, c.recal.y + 3, 1, 5, ink);
-  px(c.recal.x + 12, c.recal.y + 11, 1, 1, ink);
+  keycap(c.pause, live ? LIGHT : GROOVE);
+  px(c.pause.x + 9, c.pause.y + 4, 2, 7, ink);
+  px(c.pause.x + 13, c.pause.y + 4, 2, 7, ink);
+  keycap(c.recal, live ? LIGHT : GROOVE);
+  ring(c.recal.x + 12, c.recal.y + 8, 4, 0, 6.3, ink);
+  px(c.recal.x + 12, c.recal.y + 2, 1, 4, ink);
   // Corner brackets: pointing out to go full screen, pointing in to leave it.
-  keycap(c.full, true);
-  const on = fullscreen.on || fullscreen.standalone, kx = c.full.x + 12, ky = c.full.y + 10;
+  keycap(c.full, LIGHT);
+  const on = fullscreen.on || fullscreen.standalone, kx = c.full.x + 12, ky = c.full.y + 7;
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
-      const x = kx + sx * (on ? 2 : 6), y = ky + sy * (on ? 2 : 5), dx = on ? sx : -sx, dy = on ? sy : -sy;
-      px(Math.min(x, x + dx * 3), y, 4, 1, UI.c);
-      px(x, Math.min(y, y + dy * 3), 1, 4, UI.c);
+      const x = kx + sx * (on ? 2 : 6), y = ky + sy * (on ? 1 : 4), dx = on ? sx : -sx, dy = on ? sy : -sy;
+      px(Math.min(x, x + dx * 2), y, 3, 1, UI.c);
+      px(x, Math.min(y, y + dy * 2), 1, 3, UI.c);
     }
   }
-  drawText('RB-1', v.x - 28, vb - 18, LIGHT);
-  box(v.x - 28, vb - 8, 6, 6, led, DARK);
 
-  // Right grip: the fire button, sunk a pixel while pressed and dark while overheated.
-  const f = c.fire, d = pressed ? 1 : 0;
-  disc(f.x, f.y + 2, f.r + 3, DARK);
-  disc(f.x, f.y + d, f.r, hot || !live ? '#47101a' : '#99101c');
-  disc(f.x - 1, f.y - 2 + d * 2, f.r - 3, hot ? (blink ? '#93282b' : '#6b1a22') : !live ? '#6b1a22' : pressed ? '#ff9a7a' : '#f02a2a');
-  drawText(hot ? 'HOT' : 'FIRE', f.x + 1, f.y - 4 + d, hot ? '#f0a07a' : '#3d060c', 1, 0.5);
+  // Left grip, below: one button per power-up, showing how many are held. A button whose
+  // power-up is in force has a lit edge.
+  for (const s of c.slots) {
+    const n = inv ? inv[s.kind] : 0, col = POWERUPS[s.kind].color;
+    keycap(s, active[s.kind] ? (blink ? col : UI.w) : n ? col : GROOVE);
+    ctx.globalAlpha = n ? 1 : 0.22;
+    blit(powerIcon(s.kind), s.x + 12, s.y + 9, 2);
+    ctx.globalAlpha = 1;
+    if (n) drawText(n, s.x + 12, s.y + 18, UI.w, 1, 0.5);
+  }
+
+  // Right grip: SEAL above, FIRE below, and the status light.
+  button(c.seal, sealing, live ? '#0d4a4a' : '#0a2c2c', live ? '#1f8f86' : '#124845', '#9ccdc4', 'SEAL', live ? '#05282a' : '#0a2c2c');
+  if (hot) button(c.fire, pressed, '#47101a', blink ? '#93282b' : '#6b1a22', '#93282b', 'HOT', '#f0a07a');
+  else button(c.fire, pressed, live ? '#99101c' : '#47101a', live ? '#f02a2a' : '#6b1a22', '#ff9a7a', 'FIRE', '#3d060c');
+  drawText('RB-1', vr + 8, vb - 18, LIGHT);
+  box(vr + 36, vb - 18, 6, 6, led, DARK);
 }

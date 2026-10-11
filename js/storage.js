@@ -20,8 +20,8 @@ export function saveStore(store) {
 export function recordScore(store, run) {
   if (!run.score) return;
   const entry = store.scores.find(s => s.id === run.id);
-  if (entry) { entry.score = run.score; entry.reached = run.incident + 1; }
-  else store.scores.push({ id: run.id, score: run.score, reached: run.incident + 1 });
+  if (entry) { entry.score = run.score; entry.level = run.level; }
+  else store.scores.push({ id: run.id, score: run.score, level: run.level });
   store.scores.sort((a, b) => b.score - a.score);
   store.scores.length = Math.min(5, store.scores.length);
   saveStore(store);

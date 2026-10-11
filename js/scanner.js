@@ -1,66 +1,53 @@
 // The Scanner: the game's only character. Every line it can say lives here.
-// Mid-game remarks are one line at a time and rate-limited; anything longer belongs between rounds.
+// It is terse and matter-of-fact: it reports, it instructs, and it very occasionally lets
+// slip that it is unimpressed. One line at a time, a few words, rate-limited.
 
 export const LINES = {
   permission: ["I need your camera. I can't see without it."],
 
-  riftOpen: ['New rift. Follow the arrow.', 'Another one. They do that.', 'Rift opening. Do keep up.', 'Fresh rift. Somewhere that is not where you are looking.'],
-  riftBehind: ['Breach at your six. That means behind you.', 'Behind you. No. The other behind.', 'New rift. Turn around. All the way.'],
-  tear: ["It's tearing. Something is pushing.", 'Membrane failing. As predicted.', "Something came through. I'd describe it, but you'd only worry."],
-  breach: ['Full breach. I did say seal it.', "It's wide open now. Well done.", 'Breach. They will be bigger now.'],
-  sealed: ['Sealed. Adequate.', 'Rift closed. One fewer.', 'Sealed. I did most of that.', 'Closed. Reality thanks you. I do not.'],
-  locked: ['Too strong to seal. It is held open from the other side. Shoot what comes out.', 'Not yet. Every one you shoot weakens it.', 'It will not close while they are this strong. Shoot.'],
-  weak: ['That rift is weakening. Seal it.', 'It is weak enough now. Hold the crosshair on it.', 'They are losing their grip. Seal it.'],
-  absorbed: ['The rift swallowed that. Wait until they are out.', 'Shooting into a rift does nothing. Shoot what comes out of it.', 'Not out yet. The rift is eating your shots.'],
-  blocked: ["Can't seal. Something's in the doorway.", 'Something is halfway through. Let it out, then seal.'],
+  riftOpen: ['New rift. Follow the arrow.', 'Another rift.', 'Rift detected.'],
+  riftBehind: ['Rift behind you.', 'New rift. Turn around.'],
+  tear: ['Rift open. Incoming.', 'It is open. Here they come.'],
+  breach: ['That rift is wide open now.', 'Rift at full width. Expect more of them.'],
+  sealed: ['Sealed.', 'Rift closed.', 'Sealed. Next.'],
+  locked: ['Too strong to seal. Shoot its creatures first.', 'Not yet. Weaken it first.'],
+  weak: ['That rift is weak. Hold SEAL on it.', 'Weak enough. Seal it.'],
+  absorbed: ['Shots into a rift are lost.', 'Wait until it is clear of the rift.'],
+  blocked: ['Something is arriving. Wait, then seal.'],
 
-  streak: ['Acceptable shooting.', 'You hit several things. Noted.', 'Keep doing that.'],
-  miss: ['That was a wall.', 'The crosshair is the bit in the middle.', "Missed. I'll adjust my expectations.", 'You are shooting furniture.'],
-  overheat: ['I am overheating. I did mention the trigger discipline.', 'Too hot. I refuse to fire.', 'Cooling. Entertain yourself.'],
-  damage: ["That was you. You're leaking reality.", 'Something reached you. Try not to let them.', 'Integrity dropping. Yours, not mine.', 'It bit you. I felt nothing.'],
-  low: ["Reality is below thirty percent. I'd hurry.", 'Integrity critical. I will be fine, for the record.'],
-  recal: ["Fine. I've lost track of the room. Recalibrating.", 'Re-zeroing. The room moved. Probably.', 'Recalibrated. This is now forwards.'],
+  streak: ['Good shooting.', 'Keep that up.'],
+  miss: ['Missed.', 'Nothing there.'],
+  overheat: ['Overheated. Cooling.', 'Too hot. Wait.'],
+  damage: ['You are hit.', 'One reached you.', 'Integrity dropping.'],
+  low: ['Integrity below thirty percent.'],
+  recal: ['Recalibrated.'],
 
-  glomm: ["Glomm on the rift. It's pulling. Shoot it off.", 'A Glomm. It is widening the rift. Two shots.'],
-  skaith: ["Skaith. It moves when you don't look. So look.", 'Skaith. Do not look away. Or do. Your choice.'],
-  ootheen: ['Ootheen. It is looking at you. Shoot it quickly.', 'An eye. It stares. It hurts. Be fast.'],
-  ootheenJump: ['It saw you aiming. Be quicker.', 'Ootheen relocated. It does that.', 'Too slow. It moved.'],
+  glomm: ['Glomm on the rift. It is widening it.', 'A Glomm. Shoot it off. Two shots.'],
+  skaith: ['Skaith. It only moves when you look away.', 'Skaith. Keep it in view.'],
+  ootheen: ['Ootheen. Shoot it quickly, or it moves.'],
+  ootheenJump: ['It moved.', 'Too slow. It jumped.'],
+  brakk: ['Brakk. Armoured. Five shots.', 'A Brakk. Start shooting.'],
+  thrum: ['Thrum. It is about to charge.', 'That one charges. Shoot it first.'],
 
-  brakk: ['Brakk. Armoured. Keep shooting it. It will get there eventually otherwise.', 'A Brakk. Slow. Five shots. Start now.'],
-  thrum: ['Thrum. It is about to charge. Shoot it first.', 'That one charges. You have about a second.'],
+  drop: ['Power-up. Shoot it to collect it.'],
+  got: ['Collected. Use it from the left side.', 'Collected.'],
+  empty: ['None of those left.'],
+  full: ['Integrity is already full.'],
+  rapid: ['Rapid fire. Hold FIRE.'],
+  health: ['Integrity restored.'],
+  nova: ['Grenade away.'],
+  stasis: ['Stasis field. They are held.'],
+  charge: ['Rift charge armed. Shoot a rift.'],
+  chargeUsed: ['Rift collapsed.'],
 
-  drop: ['It dropped something useful. Shoot it to take it.', 'Equipment. Shoot it before it fades.'],
-  rapid: ['Rapid fire. Hold the trigger. I will pretend not to mind.', 'Rapid fire. No heat. Enjoy it while it lasts.'],
-  health: ['Reality patched. Slightly.', 'Integrity restored. Some of it.'],
-  nova: ['Grenade. Stand back. You cannot. Never mind.', 'That cleared the room.'],
-  stasis: ['Stasis field. They are stuck. Use it.', 'Everything is frozen. Not you. Move.'],
-  charge: ['Rift charge loaded. Your next shot into a rift closes it.', 'Rift charge. Pick a rift and shoot it.'],
-  chargeUsed: ['Rift collapsed. That is cheating. I approve.', 'One rift fewer. Efficient.'],
+  bossRise: ['The Ummagog. Shoot its weak points when they glow.'],
+  bossWeak: ['Weak point exposed.', 'Another weak point. Shoot the glow.'],
+  bossArmour: ['That is armour. Shoot the glowing part.'],
+  bossPod: ['Weak point destroyed.'],
+  bossStun: ['It is stunned. Seal its rift now.'],
+  bossRecover: ['It is back up.'],
 
-  bossRise: ['That is the Ummagog. Do not be alarmed. Be accurate.'],
-  bossWeak: ['Weak point exposed. The glowing one.', 'Another weak point. Shoot the glow.'],
-  bossArmour: ["That's armour. Shoot the glowing part.", 'Armour. You are wasting heat.'],
-  bossPod: ['One down. It noticed.', 'Weak point destroyed. It is upset.'],
-  bossStun: ["It's stunned. Seal the rift. Now would be good."],
-  bossRecover: ["It's getting up. You had one job."],
-
-  win: ['Incident contained.'],
-  gameover: [
-    'Reality has failed at your location. I will log it as user error.',
-    'You have been compromised. I am unaffected, thank you for asking.',
-    'That went as well as I calculated. I calculated badly on purpose.',
-  ],
-  victory: ['All rifts sealed. The incident is closed. You were present for it.'],
-  upgrade: ['I am permitted to improve myself between incidents. Pick one. I would pick all three.'],
-};
-
-// The performance review.
-export const GRADES = {
-  S: ['Flawless. I assume I was carrying you.', 'No notes. This is suspicious.'],
-  A: ['Competent. I am as surprised as you are.', 'Good. Do not let it change you.'],
-  B: ['Adequate. Reality survived, loosely.', 'Fine. I have seen worse. I have seen it from you.'],
-  C: ['The rifts are sealed. That is the kindest thing I can say.', 'You were the unreliable component. Again.'],
-  D: ['Technically a success. I will be reviewing the word technically.', 'We survived. I use the word we generously.'],
+  gameover: ['Reality integrity lost.', 'That is the end of this run.', 'Integrity gone. I did warn you.'],
 };
 
 class Scanner {

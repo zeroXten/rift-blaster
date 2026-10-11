@@ -1,4 +1,4 @@
-// Creature registry, plus the catalogue entries the scanner shows in briefings.
+// Creature registry, plus the catalogue entries shown on the card that introduces a level.
 
 import { Yrrk, Spawnling } from './yrrk.js';
 import { Zik } from './zik.js';
