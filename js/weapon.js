@@ -1,6 +1,6 @@
 // Aiming, firing, heat, and sealing by gaze.
 
-import { BEAM_TOL, HEAT_DECAY, HEAT_PER_SHOT, OVERHEAT_LOCK, SEAL_ANGLE, SEAL_TIME } from './config.js';
+import { BEAM_TOL, HEAT_DECAY, HEAT_PER_SHOT, OVERHEAT_LOCK, SEAL_ANGLE, SEAL_TIME, level } from './config.js';
 import { DEG, angleTo, view } from './projection.js';
 import { play, sealTone } from './audio/sfx.js';
 import { scanner } from './scanner.js';
@@ -10,8 +10,8 @@ export class Weapon {
   // up: upgrade levels { cool, beam, seal }
   constructor(up) {
     this.decay = HEAT_DECAY * (1 + 0.35 * up.cool);
-    this.tol = (BEAM_TOL + 1.5 * up.beam) * DEG;
-    this.sealTime = Math.max(0.8, SEAL_TIME - 0.35 * up.seal);
+    this.tol = (BEAM_TOL + level.tol + 1.5 * up.beam) * DEG;
+    this.sealTime = Math.max(0.8, SEAL_TIME - 0.35 * up.seal) * level.seal;
     this.tolPx = 0;
     this.heat = 0;
     this.lock = 0;          // seconds of overheat lockout left
@@ -48,7 +48,7 @@ export class Weapon {
     for (const r of game.rifts) {
       if (r.sealed) continue;
       const a = angleTo(r.dir);
-      if (a < SEAL_ANGLE * DEG * (r.size > 1 ? 1.6 : 1) && a < nearA) { near = r; nearA = a; }
+      if (a < SEAL_ANGLE * level.sealAngle * DEG * (r.size > 1 ? 1.6 : 1) && a < nearA) { near = r; nearA = a; }
     }
     if (near && near === this.rift) {
       this.grace = 0.15;
@@ -71,11 +71,11 @@ export class Weapon {
   fire(game) {
     if (this.lock > 0) { play('denied'); return; }
     game.stats.shots++;
-    this.heat += HEAT_PER_SHOT;
+    this.heat += HEAT_PER_SHOT * level.heat;
     this.kick = 0.08;
     play('shot');
     const c = this.pick(game);
-    game.fx.shot(!!c);
+    game.fx.shot(!!c, this.heat);
     if (c) {
       game.stats.hits++;
       game.misses = 0;

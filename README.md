@@ -72,5 +72,7 @@ These can only be judged with the phone in your hand:
 
 - `FOV_LONG` in `js/config.js`: if rifts swim against the room as you turn, the value does
   not match your camera.
-- Difficulty: rift timings are in `js/incidents.js`, damage and speed in each creature file.
+- Difficulty: the three levels on the title screen are a table of multipliers at the bottom of
+  `js/config.js` (hard is the game as designed; easy is meant for small children). Rift timings
+  are in `js/incidents.js`, damage and speed in each creature file.
 - Music: patterns are note data at the top of `js/audio/music.js`.

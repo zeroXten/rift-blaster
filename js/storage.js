@@ -2,7 +2,7 @@
 // every access is wrapped and the game carries on without it.
 
 const KEY = 'riftblaster.v1';
-const DEFAULTS = { scores: [], music: true, voice: true };
+const DEFAULTS = { scores: [], music: true, voice: true, difficulty: 'medium' };
 
 export function loadStore() {
   try {

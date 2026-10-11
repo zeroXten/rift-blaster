@@ -1,7 +1,7 @@
 // Rifts: fixed points on the sphere that widen through crack, tear and breach, push creatures
 // through, and can be sealed by holding the crosshair on them.
 
-import { MAX_CREATURES, RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR } from './config.js';
+import { MAX_CREATURES, RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR, level } from './config.js';
 import { DEG, dirFromBearing, onScreen, project, view } from './projection.js';
 import { R, line, px } from './render.js';
 import { DIMS } from './sprites.js';
@@ -126,10 +126,11 @@ export class Rift {
     this.dir = dirFromBearing(this.yaw, this.pitch);
     this.width = def.width ?? 0.2;
     this.maxWidth = def.maxWidth ?? 1;
-    this.rate = (def.growth ?? 1) / RIFT_FULL_TIME;
+    this.rate = ((def.growth ?? 1) * level.growth) / RIFT_FULL_TIME;
     this.size = def.size ?? 1;
     // A rift is held open from the other side: this many of its creatures must be shot before it will seal.
-    this.lockKills = def.lockKills ?? DIM_SPAWN[def.dim]?.hold ?? 0;
+    const hold = def.lockKills ?? DIM_SPAWN[def.dim]?.hold ?? 0;
+    this.lockKills = hold && Math.max(1, Math.round(hold * level.hold));
     this.bossLock = !!def.boss;
     this.kills = 0;
 
@@ -190,7 +191,7 @@ export class Rift {
         this.game.spawn(this.queueType, this, { elite: st === 2 && Math.random() < 0.5 });
         this.emerging++;
         this.stagger = 0.45;
-        if (--this.queue === 0) this.spawnT = DIM_SPAWN[this.dim]?.interval[Math.max(0, st - 1)] ?? 0;
+        if (--this.queue === 0) this.spawnT = (DIM_SPAWN[this.dim]?.interval[Math.max(0, st - 1)] ?? 0) * level.spawn;
       }
       return;
     }
@@ -201,7 +202,8 @@ export class Rift {
     const max = sp.max[st - 1];
     if (this.alive >= max || this.game.creatures.length >= MAX_CREATURES) { this.spawnT = 1; return; }
     const [a, b] = this.def.pack || sp.pack[st - 1];
-    this.send(Math.min(a + ((Math.random() * (b - a + 1)) | 0), max - this.alive), sp.type);
+    const n = Math.max(1, a + ((Math.random() * (b - a + 1)) | 0) + level.pack);
+    this.send(Math.min(n, max - this.alive), sp.type);
   }
 
   // Queue n creatures to push through, one after another.

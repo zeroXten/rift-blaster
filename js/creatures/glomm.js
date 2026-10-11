@@ -1,7 +1,7 @@
 // Glomm (Ulta-9, violet): clings to the edge of its rift and pulls it wider until shot.
 // Once the rift is fully open it lets go and crawls toward the player.
 
-import { REACH_DIST, RIFT_DIST } from '../config.js';
+import { REACH_DIST, RIFT_DIST, level } from '../config.js';
 import { DEG, view } from '../projection.js';
 import { scanner } from '../scanner.js';
 import { Creature } from './base.js';
@@ -40,7 +40,7 @@ export class Glomm extends Creature {
       this.r = RIFT_DIST - 0.2;
       return;
     }
-    this.r -= 0.75 * (this.elite ? 1.2 : 1) * dt;
+    this.r -= 0.75 * (this.elite ? 1.2 : 1) * level.speed * dt;
     this.yaw = this.baseYaw + Math.sin(this.t * 1.3 + this.ph) * 5 * DEG * this.progress;
     this.pitch -= this.pitch * 0.25 * dt;
     if (this.r <= REACH_DIST) this.reach();

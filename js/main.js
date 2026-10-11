@@ -2,7 +2,7 @@
 // title -> (help) -> briefing -> play <-> paused -> report -> upgrade -> briefing ... -> victory
 //                                          `-> gameover
 
-import { FOV_LONG, UI } from './config.js';
+import { FOV_LONG, UI, level, setDifficulty } from './config.js';
 import { R, initRender, px } from './render.js';
 import { DEG, qAxis, setView, view } from './projection.js';
 import {
@@ -35,6 +35,7 @@ initRender(canvas);
 
 const store = loadStore();
 music.enabled = store.music;
+setDifficulty(store.difficulty);
 scanner.voice = store.voice;
 
 const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, report: null, starting: false };
@@ -146,7 +147,7 @@ function finish(result) {
     // The scanner's performance review: mostly how much reality is left, partly how well the player shot.
     const mark = game.integrity * 0.6 + acc * 40;
     const grade = mark >= 90 ? 'S' : mark >= 78 ? 'A' : mark >= 62 ? 'B' : mark >= 45 ? 'C' : 'D';
-    const score = s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 10 + Math.round(acc * 500);
+    const score = Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 10 + Math.round(acc * 500)) * level.score);
     run.score += score;
     run.grades.push(grade);
     ui.report = {
@@ -175,6 +176,13 @@ function doRecalibrate() {
 function act(id) {
   switch (id) {
     case 'start': start(); break;
+    case 'easy':
+    case 'medium':
+    case 'hard':
+      setDifficulty(id);
+      store.difficulty = id;
+      saveStore(store);
+      break;
     case 'begin':
     case 'retry': startIncident(); break;
     case 'continue':

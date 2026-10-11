@@ -1,7 +1,7 @@
 // One incident in play: its rifts, creatures, weapon and effects, from the first rift opening
 // to the last one sealed or Reality Integrity reaching zero.
 
-import { PITCH_LIMIT } from './config.js';
+import { PITCH_LIMIT, level } from './config.js';
 import { DEG, wrapAngle } from './projection.js';
 import { cameraFrame, debugBackdrop } from './render.js';
 import { camera } from './video.js';
@@ -99,7 +99,7 @@ export class Game {
 
   damage(amount, source) {
     if (this.ending) return;
-    this.integrity = Math.max(0, this.integrity - amount * (this.incident.damageScale ?? 1));
+    this.integrity = Math.max(0, this.integrity - amount * level.damage * (this.incident.damageScale ?? 1));
     this.streak = 0;
     this.fx.hurt();
     play('damage', source?.p.pan);
@@ -119,9 +119,10 @@ export class Game {
     const open = this.rifts.reduce((n, r) => n + !r.sealed, 0);
     this.quiet = open ? 0 : this.quiet + dt;
     const next = this.pending[0];
-    if (next && !this.ending && open < (this.incident.maxOpen || 3) && (this.t >= next.at || this.quiet > 1.5)) {
-      // Rifts scheduled for the same moment open together, so they cannot all be caught as cracks.
-      while (this.pending[0]?.at === next.at) this.openRift(this.pending.shift());
+    const room = Math.min(this.incident.maxOpen || 3, level.maxOpen) - open;
+    if (next && !this.ending && room > 0 && (this.t >= next.at * level.gap || this.quiet > 1.5 * level.gap)) {
+      // Rifts scheduled for the same moment open together, as far as the difficulty allows.
+      for (let n = 0; n < room && this.pending[0]?.at === next.at; n++) this.openRift(this.pending.shift());
     }
 
     for (const r of this.rifts) { r.emerging = 0; r.clingers = 0; r.alive = 0; r.pull = 0; }

@@ -2,7 +2,7 @@
 // victory and pause. Each is laid out on the scanner's screen (R.view) with the pixel font,
 // inside the same casing as the game, and returns the buttons it drew so main.js can hit-test taps.
 
-import { UI } from './config.js';
+import { DIFFICULTY, UI, level } from './config.js';
 import { R, blit, box, cameraFrame, debugBackdrop, px } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame } from './frame.js';
@@ -26,13 +26,14 @@ let buttons = [];
 // Button centred on cx.
 function button(id, label, cx, y, o = {}) {
   const w = o.w || 150, h = o.h || 22, x = Math.round(cx - w / 2);
-  const lit = o.primary && ((performance.now() / 450) | 0) & 1;
-  box(x, y, w, h, lit ? UI.dim : UI.k, o.primary ? UI.c : UI.mid);
+  // primary blinks; on marks the selected one of a set.
+  const lit = o.on || (o.primary && ((performance.now() / 450) | 0) & 1);
+  box(x, y, w, h, lit ? UI.dim : UI.k, o.primary || o.on ? UI.c : UI.mid);
   if (o.sub) {
     drawText(label, cx, y + 5, UI.w, 1, 0.5);
     drawText(o.sub, cx, y + 16, UI.mid, 1, 0.5);
   } else {
-    drawText(label, cx, y + ((h - 7) >> 1), o.primary ? UI.w : UI.c, 1, 0.5);
+    drawText(label, cx, y + ((h - 7) >> 1), o.primary || o.on ? UI.w : o.dim ? UI.mid : UI.c, 1, 0.5);
   }
   buttons.push({ id, x, y, w, h, primary: !!o.primary });
 }
@@ -72,11 +73,14 @@ const SCREENS = {
     heading('RIFT', lx, v.y + 8, UI.w, 4);
     heading('BLASTER', lx, v.y + 40, UI.c, 3);
     drawTextS('INTERDIMENSIONAL PEST CONTROL', lx, v.y + 68, UI.yel, 1, 0.5);
-    para(`"${LINES.permission[0]}"`, lx, v.y + 86, lw - 10, UI.w);
-    button('start', c.starting ? 'STAND BY...' : 'START', lx, v.y + 112, { primary: true, h: 26, w: 120 });
+    para(`"${LINES.permission[0]}"`, lx, v.y + 84, lw - 10, UI.w);
+    Object.keys(DIFFICULTY).forEach((key, i) => {
+      button(key, DIFFICULTY[key].name, lx + (i - 1) * 60, v.y + 106, { w: 56, h: 17, on: key === level.key, dim: true });
+    });
+    button('start', c.starting ? 'STAND BY...' : 'START', lx, v.y + 128, { primary: true, h: 24, w: 120 });
     para(c.debug
-      ? 'DESKTOP: DRAG OR ARROWS TO LOOK. CLICK OR SPACE TO FIRE. F FOR FULL SCREEN. 1-5 PICK AN INCIDENT.'
-      : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 146, lw - 10, UI.mid);
+      ? 'DESKTOP: DRAG OR ARROWS TO LOOK. CLICK OR SPACE FIRES. F: FULL SCREEN. 1-5: INCIDENT.'
+      : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 158, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST RUN ${best.score}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
   },
@@ -109,7 +113,7 @@ const SCREENS = {
     const v = R.view, inc = INCIDENTS[c.run.incident], cat = CATALOGUE[inc.creature];
     const cw = 118, lw = v.w - cw - 14, x = v.x + 8;
     backdrop(c, 0.78);
-    drawText(`INCIDENT ${c.run.incident + 1} OF ${INCIDENTS.length}`, x, v.y + 8, UI.mid);
+    drawText(`INCIDENT ${c.run.incident + 1} OF ${INCIDENTS.length} - ${level.name}`, x, v.y + 8, UI.mid);
     heading(inc.name, x, v.y + 19, UI.w, 2, 0);
     // It types its briefing out; a tap completes it.
     let n = Math.floor(c.t * 45), y = v.y + 42;

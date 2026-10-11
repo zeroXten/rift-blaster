@@ -1,7 +1,7 @@
 // Ootheen (Miridian, amber): a single eye that hovers and glares. Keep the crosshair on it
 // for more than 0.8 seconds and it jumps somewhere else.
 
-import { PITCH_LIMIT } from '../config.js';
+import { PITCH_LIMIT, level } from '../config.js';
 import { DEG, wrapAngle } from '../projection.js';
 import { DIMS } from '../sprites.js';
 import { play } from '../audio/sfx.js';
@@ -38,7 +38,7 @@ export class Ootheen extends Creature {
 
     if (this.aimed(this.game.weapon.tolPx)) {
       this.held += dt;
-      if (this.held > JUMP_AFTER) this.jump();
+      if (this.held > JUMP_AFTER * level.patience) this.jump();
     } else {
       this.held = Math.max(0, this.held - dt * 2);
     }
@@ -48,7 +48,7 @@ export class Ootheen extends Creature {
     if (this.glareT < GLARE_CHARGE && !this.charging) { this.charging = true; play('glare', this.p.pan); }
     if (this.glareT <= 0) {
       this.charging = false;
-      this.glareT = GLARE_EVERY;
+      this.glareT = GLARE_EVERY * level.spawn;
       if (this.on) this.game.fx.zap(this.p.x, this.p.y);
       this.game.damage(this.def.damage, this);
     }
@@ -70,7 +70,7 @@ export class Ootheen extends Creature {
 
   draw() {
     // Flickers when it is about to jump.
-    if (this.held > 0.45 && ((this.t * 20) | 0) & 1) this.flash = 0.02;
+    if (this.held > JUMP_AFTER * level.patience - 0.35 && ((this.t * 20) | 0) & 1) this.flash = 0.02;
     super.draw();
   }
 }

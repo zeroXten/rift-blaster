@@ -3,7 +3,7 @@
 // The pods are its weak points and open one at a time. Destroy all three and it is stunned,
 // which is the only time its rift can be sealed.
 
-import { RIFT_DIST } from '../config.js';
+import { RIFT_DIST, level } from '../config.js';
 import { dirFromBearing, project, view } from '../projection.js';
 import { blit } from '../render.js';
 import { DIMS, getSprite } from '../sprites.js';
@@ -37,7 +37,9 @@ export class Ummagog extends Creature {
     this.segS = getSprite('seg', this.dim);
     this.podS = getSprite('pod', this.dim);
     // state: 0 armoured, 1 exposed, 2 destroyed
-    this.pods = ARMS.map(() => ({ hp: POD_HP, state: 0, flash: 0, x: 0, y: 0, ex: 0, ey: 0 }));
+    this.podHp = Math.max(1, Math.round(POD_HP * level.hold));
+    this.hp = this.podHp * 3;
+    this.pods = ARMS.map(() => ({ hp: this.podHp, state: 0, flash: 0, x: 0, y: 0, ex: 0, ey: 0 }));
     this.active = -1;
     this.openT = 1.5;
     this.phase = 'rise';      // rise -> fight <-> stunned -> dying
@@ -74,9 +76,9 @@ export class Ummagog extends Creature {
         if (this.openT <= 0) this.expose();
       }
       this.spitT -= dt;
-      if (this.spitT <= 0) this.spit(2);
+      if (this.spitT <= 0) this.spit(Math.max(1, 2 + level.pack));
     } else if (this.phase === 'stunned') {
-      if (this.phaseT > STUN) this.recover();
+      if (this.phaseT > STUN * level.patience) this.recover();
     } else if (this.phaseT > DEATH) {
       this.dead = true;
       if (this.p.front) this.game.fx.burst(this.p.x, this.p.y, DIMS[this.dim].ramp, 60, 160, 3);
@@ -118,7 +120,7 @@ export class Ummagog extends Creature {
   }
 
   spit(n) {
-    this.spitT = 8;
+    this.spitT = 8 * level.spawn;
     this.roar = 0.8;
     this.rift.send(n, 'spawnling');
   }
@@ -166,7 +168,7 @@ export class Ummagog extends Creature {
     } else {
       play('roar', this.p.pan);
       scanner.say('bossPod', true);
-      this.spit(3);
+      this.spit(Math.max(1, 3 + level.pack));
     }
   }
 
@@ -175,9 +177,9 @@ export class Ummagog extends Creature {
     this.setPhase('fight');
     this.rift.bossLock = true;
     const pod = this.pods[2];
-    pod.hp = POD_HP;
+    pod.hp = this.podHp;
     pod.state = 0;
-    this.hp = POD_HP;
+    this.hp = this.podHp;
     this.openT = 1;
     this.spitT = 3;
     this.roar = 0.8;

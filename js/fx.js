@@ -1,18 +1,22 @@
-// Screen-space effects: pixel bursts, the beam, flashes, steam.
+// Screen-space effects: pixel bursts, the scanner's beam, flashes, steam.
 
 import { UI } from './config.js';
 import { view } from './projection.js';
-import { R, line, px } from './render.js';
+import { R, disc, line, px, ring } from './render.js';
 import { pick, rand } from './util.js';
 
 const MAX_PARTS = 400;
 const STEAM = ['#f4f4f4', '#9ccdc4', '#6aa6a6'];
 
+// Beam colours as [glow, body, core]. It turns orange when the scanner is close to overheating.
+const BEAM_COOL = ['#0d4a4a', '#39e6d0', '#ffffff'];
+const BEAM_HOT = ['#4d2600', '#ff9a3a', '#ffffff'];
+const BEAM_TIME = 0.16;
+
 export class Fx {
   constructor() {
     this.parts = [];
-    this.beam = 0;
-    this.beamHit = false;
+    this.bolt = null;     // the beam being drawn: { t, hit, pal }
     this.zapT = 0;
     this.zx = 0;
     this.zy = 0;
@@ -43,10 +47,11 @@ export class Fx {
     this.white = 0.12;
   }
 
-  shot(hit) {
-    this.beam = 0.09;
-    this.beamHit = hit;
-    if (hit) this.burst(view.cx, view.cy, ['#ffffff', UI.c], 6, 60);
+  // heat is the scanner's heat (0-100) as the shot leaves.
+  shot(hit, heat = 0) {
+    const pal = heat > 80 ? BEAM_HOT : BEAM_COOL;
+    this.bolt = { t: 0, hit, pal };
+    if (hit) this.burst(view.cx, view.cy, [pal[2], pal[1], pal[1]], 10, 80);
   }
 
   // An Ootheen's glare landing.
@@ -62,7 +67,7 @@ export class Fx {
   }
 
   update(dt) {
-    this.beam -= dt;
+    if (this.bolt && (this.bolt.t += dt) > BEAM_TIME) this.bolt = null;
     this.zapT -= dt;
     this.red = Math.max(0, this.red - dt);
     this.glitch = Math.max(0, this.glitch - dt);
@@ -85,13 +90,7 @@ export class Fx {
     const ctx = R.ctx, { x0, y0, w, h } = view, by = y0 + h;
     for (const p of this.parts) px(p.x, p.y, p.size, p.size, p.color);
     if (this.zapT > 0) line(this.zx, this.zy, view.cx, by, ((this.zapT * 40) | 0) & 1 ? '#ffe9a0' : '#ffa91f', 2);
-    if (this.beam > 0) {
-      // A short beam from the bottom of the screen to the crosshair, with a flash where it lands.
-      line(view.cx, by, view.cx, view.cy, UI.c, 3);
-      line(view.cx, by, view.cx, view.cy, '#ffffff', 1);
-      const r = this.beamHit ? 4 : 2;
-      if (this.beam > 0.04) px(view.cx - r, view.cy - r, r * 2 + 1, r * 2 + 1, '#ffffff');
-    }
+    if (this.bolt) this.drawBeam(this.bolt, by);
     if (this.red > 0) {
       ctx.globalAlpha = (this.red / 0.45) * 0.45;
       px(x0, y0, w, h, UI.red);
@@ -101,6 +100,45 @@ export class Fx {
       ctx.globalAlpha = Math.min(0.7, this.white * 3);
       px(x0, y0, w, h, '#ffffff');
       ctx.globalAlpha = 1;
+    }
+  }
+
+  // One straight beam from the bottom of the screen to the crosshair: wide where it leaves the
+  // scanner and narrow where it lands, for depth, with a glow around a white core. It opens with
+  // a fat flash, bright slugs race up it, and it thins away to nothing. A hit ends in a small
+  // star and an expanding ring.
+  drawBeam(beam, by) {
+    const ctx = R.ctx, [glow, body, core] = beam.pal, p = beam.t / BEAM_TIME;
+    const cx = Math.round(view.cx), top = Math.round(view.cy), len = by - top;
+    const k = p < 0.2 ? 1.5 : 1.15 - p;
+    const span = (hw, y, color) => {
+      const w = Math.max(1, Math.round(hw * 2)) | 1;
+      ctx.fillStyle = color;
+      ctx.fillRect(cx - (w >> 1), y, w, 1);
+    };
+    for (let y = by - 1; y >= top; y--) {
+      const d = by - y, hw = (7 * (1 - d / len) + 1.2) * k;
+      const slug = (((d - beam.t * 900) % 18) + 18) % 18 < 5;
+      if (p < 0.7) span(hw + 1.5, y, glow);
+      span(hw, y, p < 0.2 ? core : body);
+      span(hw * (slug ? 0.8 : 0.4), y, core);
+    }
+    if (p < 0.5) {
+      // Muzzle flash, half hidden by the casing.
+      disc(cx, by, Math.round(8 * k), body);
+      disc(cx, by, Math.round(5 * k), core);
+    }
+
+    if (beam.hit) {
+      ring(cx, top, 3 + p * 10, 0, 6.3, p < 0.5 ? core : body);
+      if (p < 0.35) {
+        const r = 7 - p * 8;
+        line(cx - r, top, cx + r, top, core);
+        line(cx, top - r, cx, top + r, core);
+        px(cx - 2, top - 2, 5, 5, core);
+      }
+    } else if (p < 0.35) {
+      px(cx - 1, top - 1, 3, 3, core);
     }
   }
 }

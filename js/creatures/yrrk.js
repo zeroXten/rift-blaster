@@ -1,6 +1,6 @@
 // Yrrk (Vesh, acid green): small, arrives in groups, drifts toward the player.
 
-import { REACH_DIST } from '../config.js';
+import { REACH_DIST, level } from '../config.js';
 import { DEG } from '../projection.js';
 import { rand } from '../util.js';
 import { Creature } from './base.js';
@@ -13,7 +13,7 @@ export class Yrrk extends Creature {
     // Each one bursts out on its own line and weaves, so a pack cannot be shot as one target.
     this.offYaw = rand(-30, 30) * DEG;
     this.offPitch = rand(-9, 9) * DEG;
-    this.speed = rand(1.1, 1.6) * (this.elite ? 1.2 : 1);
+    this.speed = rand(1.1, 1.6) * (this.elite ? 1.2 : 1) * level.speed;
     this.weave = rand(3, 7) * DEG;
     this.ph = Math.random() * 6.28;
   }

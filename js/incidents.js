@@ -25,17 +25,17 @@ export const INCIDENTS = [
     briefing: [
       'Incident one. A rift has opened in your immediate vicinity. This is normal now.',
       'Things called Yrrks will come through it. Small. Numerous. Catalogue entry: avoid.',
-      'Follow the arrow to the rift. Fire with your right thumb. I need six samples. Then hold the crosshair on the rift for two seconds and I will seal it.',
+      'Follow the arrow to the rift. Fire with your right thumb. I need samples: the pips under the rift count them. Then hold the crosshair on the rift and I will seal it.',
     ],
     rifts: [
       { at: 0.5, dim: 'vesh', yaw: 55, pitch: 2, maxWidth: 0.6, lockKills: 6, pack: [3, 3], waitSeen: true },
     ],
     hints: {
       start: 'Rift detected. Follow the arrow.',
-      riftSeen: 'That crack is a rift. I need six samples before I can seal it.',
-      locked: 'Not yet. Six samples first. Shoot what comes out.',
+      riftSeen: 'That crack is a rift. I need samples before I can seal it.',
+      locked: 'Not yet. Samples first. Shoot what comes out.',
       tear: "It's tearing. Here they come. Shoot them.",
-      firstKill: 'Good. Five more.',
+      firstKill: 'Good. Keep going.',
       unlocked: 'Samples logged. Hold the crosshair on the rift to seal it.',
       blocked: "Can't seal while something is coming through. Shoot it.",
     },

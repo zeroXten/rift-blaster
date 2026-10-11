@@ -1,6 +1,6 @@
 // Skaith (The Hollow, cold white): only moves while outside the player's view.
 
-import { REACH_DIST } from '../config.js';
+import { REACH_DIST, level } from '../config.js';
 import { DEG } from '../projection.js';
 import { play } from '../audio/sfx.js';
 import { scanner } from '../scanner.js';
@@ -13,7 +13,7 @@ export class Skaith extends Creature {
   constructor(game, rift, o) {
     super(game, rift, o);
     this.offYaw = rand(-30, 30) * DEG;
-    this.speed = 1.3 * (this.elite ? 1.2 : 1);
+    this.speed = 1.3 * (this.elite ? 1.2 : 1) * level.speed;
     this.pose = 0;
     this.moved = false;
     this.stepT = 0;
