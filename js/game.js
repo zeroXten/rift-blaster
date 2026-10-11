@@ -3,19 +3,22 @@
 
 import { MAX_CREATURES, PITCH_LIMIT, level } from './config.js';
 import { DEG, wrapAngle } from './projection.js';
-import { cameraFrame, debugBackdrop } from './render.js';
+import { R, cameraFrame, debugBackdrop, px } from './render.js';
 import { camera } from './video.js';
 import { recalibrate } from './orientation.js';
 import { Rift } from './rift.js';
 import { CREATURES } from './creatures/index.js';
 import { Weapon } from './weapon.js';
 import { Fx } from './fx.js';
+import { POWERUPS, Pickup } from './pickups.js';
 import { drawHud } from './hud.js';
 import { drawIndicators } from './indicators.js';
 import { play } from './audio/sfx.js';
 import { setIntensity } from './audio/music.js';
 import { scanner } from './scanner.js';
 import { rand, vibrate } from './util.js';
+
+const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
 export class Game {
   constructor(incident, upgrades) {
@@ -24,6 +27,15 @@ export class Game {
     this.integrity = 100;
     this.rifts = [];
     this.creatures = [];
+    this.pickups = [];
+    // Power-up state. trigger is whether the fire button is being held, for rapid fire.
+    this.rapid = 0;           // seconds of rapid fire left
+    this.stasis = 0;          // seconds creatures and rifts stay frozen
+    this.charge = false;      // a rift charge is loaded: the next shot into a rift closes it
+    this.trigger = false;
+    this.banner = null;       // { text, color, t }: the name of a power-up just taken
+    this.dropT = -99;
+    this.sinceDrop = 0;
     this.pending = incident.rifts.slice().sort((a, b) => a.at - b.at);
     this.total = this.pending.length;
     this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
@@ -56,6 +68,11 @@ export class Game {
     return Math.min(level.alive - live, MAX_CREATURES - this.creatures.length);
   }
 
+  // Does this incident include that kind of creature yet?
+  allows(type) {
+    return !this.incident.types || this.incident.types.includes(type);
+  }
+
   spawn(type, rift, opts) {
     const c = new CREATURES[type](this, rift, opts);
     this.creatures.push(c);
@@ -86,6 +103,57 @@ export class Game {
     this.emit('firstKill');
     if (++this.streak % 6 === 0) scanner.say('streak');
     if (this.rifts.some(r => r.lockKills && r.kills === r.lockKills)) this.emit('unlocked');
+    this.maybeDrop(creature);
+  }
+
+  // Now and then a shot creature leaves a power-up hanging where it died.
+  maybeDrop(creature) {
+    if (this.incident.noDrops || creature.pods || this.ending) return;
+    this.sinceDrop++;
+    if (this.t - this.dropT < 6 || this.pickups.length >= 2) return;
+    if (Math.random() > 0.1 * level.drops && this.sinceDrop < 9) return;
+    // Health turns up when it is needed, and a rift charge only when there is a rift to use it on.
+    const weight = kind => (kind === 'health' ? (this.integrity > 90 ? 0 : this.integrity < 50 ? 4 : 1.5)
+      : kind === 'charge' ? (this.charge || !this.rifts.some(r => !r.sealed && !r.def.boss) ? 0 : POWERUPS.charge.weight)
+      : POWERUPS[kind].weight);
+    const kinds = Object.keys(POWERUPS);
+    let roll = Math.random() * kinds.reduce((sum, k) => sum + weight(k), 0);
+    const kind = kinds.find(k => (roll -= weight(k)) < 0) || 'rapid';
+    this.pickups.push(new Pickup(kind, creature.yaw, creature.pitch));
+    this.dropT = this.t;
+    this.sinceDrop = 0;
+    play('drop', creature.p.pan);
+    scanner.say('drop');
+  }
+
+  // The player shot a power-up.
+  collect(item) {
+    const def = item.def;
+    item.taken = true;
+    this.banner = { text: def.name, color: def.color, t: 1.8 };
+    this.fx.burst(item.p.x, item.p.y, [def.color, '#ffffff'], 14, 70);
+    play('pickup');
+    vibrate(30);
+    scanner.say(item.kind, true);
+    if (item.kind === 'rapid') { this.rapid = def.time; this.weapon.cool(); }
+    else if (item.kind === 'health') this.integrity = Math.min(100, this.integrity + 25);
+    else if (item.kind === 'stasis') { this.stasis = def.time; play('stasis'); }
+    else if (item.kind === 'charge') this.charge = true;
+    else this.blast(item);
+  }
+
+  // A grenade going off: every creature out in the open near it is destroyed.
+  blast(item) {
+    const d = item.dir;
+    for (const c of this.creatures.slice()) {
+      if (c.pods) { c.blasted(); continue; }
+      if (c.state !== 'active') continue;
+      const cos = d[0] * c.dir[0] + d[1] * c.dir[1] + d[2] * c.dir[2];
+      if (Math.acos(Math.max(-1, Math.min(1, cos))) < BLAST) { c.hp = 0; c.die(true); }
+    }
+    this.fx.nova(item.p.x, item.p.y, ['#ff3b3b', '#ffd23f', '#ffffff']);
+    play('nova', item.p.pan);
+    vibrate([60, 30, 120]);
   }
 
   onSealed(rift) {
@@ -134,12 +202,23 @@ export class Game {
       for (let n = 0; n < room && this.pending[0]?.at === next.at; n++) this.openRift(this.pending.shift());
     }
 
+    this.rapid = Math.max(0, this.rapid - dt);
+    this.stasis = Math.max(0, this.stasis - dt);
+    if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
+    // In stasis nothing advances: creatures hang where they are and rifts neither widen nor
+    // deliver. The boss is too big to hold, and anything already dying finishes dying.
+    const frozen = this.stasis > 0;
     for (const r of this.rifts) { r.emerging = 0; r.clingers = 0; r.alive = 0; r.pull = 0; }
-    for (const c of this.creatures) c.update(dt);
-    for (const r of this.rifts) r.update(dt);
+    for (const c of this.creatures) {
+      if (frozen && !c.pods && c.state !== 'dying') c.freeze();
+      else c.update(dt);
+    }
+    for (const r of this.rifts) r.update(frozen && !r.sealed ? 0 : dt);
+    for (const item of this.pickups) item.update(dt);
     this.weapon.update(dt, this);
     this.fx.update(dt);
     this.creatures = this.creatures.filter(c => !c.dead);
+    this.pickups = this.pickups.filter(item => !item.taken && item.life > 0);
 
     if (this.t > 0.8) this.emit('start');
     if (this.rifts[0]?.on) this.emit('riftSeen');
@@ -180,6 +259,13 @@ export class Game {
     // Painter's order, far to near, the way Doom drew its monsters.
     this.creatures.sort((a, b) => b.r - a.r);
     for (const c of this.creatures) c.draw();
+    if (this.stasis > 0) {
+      // A cold tint over everything that is being held.
+      R.ctx.globalAlpha = 0.16;
+      px(R.view.x, R.view.y, R.view.w, R.view.h, POWERUPS.stasis.color);
+      R.ctx.globalAlpha = 1;
+    }
+    for (const item of this.pickups) item.draw();
     this.fx.draw();
     drawIndicators(this);
     drawHud(this);

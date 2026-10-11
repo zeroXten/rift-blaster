@@ -37,13 +37,13 @@ export const UI = {
 //   maxOpen   most rifts open at once              tol      extra degrees of aiming forgiveness
 //   sealAngle how close the crosshair must be to seal        seal    time the seal takes
 //   heat      heat per shot                        patience how long before an Ootheen jumps, a stunned boss recovers
-//   score     score multiplier
+//   score     score multiplier                     drops    how often creatures leave power-ups
 // Easy keeps things happening but never many at once: one rift, at most two creatures in play,
 // and the next one arrives soon after there is room for it.
 export const DIFFICULTY = {
-  easy:   { name: 'EASY',   speed: 0.5, spawn: 0.6,  alive: 2,  pack: -1, damage: 0.25, hold: 0.5, growth: 0.4, gap: 1,   maxOpen: 1, tol: 5, sealAngle: 1.7,  seal: 0.6, heat: 0.5, patience: 2.5,  score: 0.5 },
-  medium: { name: 'MEDIUM', speed: 0.9, spawn: 1.15, alive: 99, pack: 0,  damage: 0.8,  hold: 0.8, growth: 0.9, gap: 1.1, maxOpen: 3, tol: 1, sealAngle: 1.15, seal: 1,   heat: 0.9, patience: 1.25, score: 1 },
-  hard:   { name: 'HARD',   speed: 1,   spawn: 1,    alive: 99, pack: 0,  damage: 1,    hold: 1,   growth: 1,   gap: 1,   maxOpen: 9, tol: 0, sealAngle: 1,    seal: 1,   heat: 1,   patience: 1,    score: 1.5 },
+  easy:   { name: 'EASY',   speed: 0.5, spawn: 0.6,  alive: 2,  pack: -1, damage: 0.25, hold: 0.5, growth: 0.4, gap: 1,   maxOpen: 1, tol: 5, sealAngle: 1.7,  seal: 0.6, heat: 0.5, patience: 2.5,  score: 0.5, drops: 1.6 },
+  medium: { name: 'MEDIUM', speed: 0.9, spawn: 1.15, alive: 99, pack: 0,  damage: 0.8,  hold: 0.8, growth: 0.9, gap: 1.1, maxOpen: 3, tol: 1, sealAngle: 1.15, seal: 1,   heat: 0.9, patience: 1.25, score: 1, drops: 1.2 },
+  hard:   { name: 'HARD',   speed: 1,   spawn: 1,    alive: 99, pack: 0,  damage: 1,    hold: 1,   growth: 1,   gap: 1,   maxOpen: 9, tol: 0, sealAngle: 1,    seal: 1,   heat: 1,   patience: 1,    score: 1.5, drops: 1 },
 };
 
 // The difficulty in force. Game code reads its numbers from here.

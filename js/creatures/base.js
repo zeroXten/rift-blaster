@@ -77,6 +77,13 @@ export class Creature {
     this.place();
   }
 
+  // Held by a stasis field: nothing advances, but it still occupies its rift.
+  freeze() {
+    if (this.state === 'emerge') this.rift.emerging++;
+    if (this.counts()) this.rift.alive++;
+    this.place();
+  }
+
   emerged() {}
   behave() {}
 
@@ -134,7 +141,7 @@ export class Creature {
       sy *= 1 - b;
     }
     // Still inside the rift it is only a shadow in the rift's colour.
-    const frames = this.state === 'emerge' ? this.sprite.shade : this.flash > 0 ? this.sprite.flash : this.sprite.frames;
+    const frames = this.state === 'emerge' || this.ghost ? this.sprite.shade : this.flash > 0 ? this.sprite.flash : this.sprite.frames;
     blit(frames[this.frame() % frames.length], p.x, p.y, sx, sy);
   }
 }

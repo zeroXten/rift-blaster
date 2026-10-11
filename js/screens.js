@@ -110,7 +110,8 @@ const SCREENS = {
 
   // The scanner's briefing on the left, the catalogue card for the new creature on the right.
   briefing(c) {
-    const v = R.view, inc = INCIDENTS[c.run.incident], cat = CATALOGUE[inc.creature];
+    const v = R.view, inc = INCIDENTS[c.run.incident], names = [].concat(inc.creature);
+    const cat = CATALOGUE[names[((c.t / 3.5) | 0) % names.length]];
     const cw = 118, lw = v.w - cw - 14, x = v.x + 8;
     backdrop(c, 0.78);
     drawText(`INCIDENT ${c.run.incident + 1} OF ${INCIDENTS.length} - ${level.name}`, x, v.y + 8, UI.mid);

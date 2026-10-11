@@ -26,6 +26,17 @@ export const LINES = {
   ootheen: ['Ootheen. It is looking at you. Shoot it quickly.', 'An eye. It stares. It hurts. Be fast.'],
   ootheenJump: ['It saw you aiming. Be quicker.', 'Ootheen relocated. It does that.', 'Too slow. It moved.'],
 
+  brakk: ['Brakk. Armoured. Keep shooting it. It will get there eventually otherwise.', 'A Brakk. Slow. Five shots. Start now.'],
+  thrum: ['Thrum. It is about to charge. Shoot it first.', 'That one charges. You have about a second.'],
+
+  drop: ['It dropped something useful. Shoot it to take it.', 'Equipment. Shoot it before it fades.'],
+  rapid: ['Rapid fire. Hold the trigger. I will pretend not to mind.', 'Rapid fire. No heat. Enjoy it while it lasts.'],
+  health: ['Reality patched. Slightly.', 'Integrity restored. Some of it.'],
+  nova: ['Grenade. Stand back. You cannot. Never mind.', 'That cleared the room.'],
+  stasis: ['Stasis field. They are stuck. Use it.', 'Everything is frozen. Not you. Move.'],
+  charge: ['Rift charge loaded. Your next shot into a rift closes it.', 'Rift charge. Pick a rift and shoot it.'],
+  chargeUsed: ['Rift collapsed. That is cheating. I approve.', 'One rift fewer. Efficient.'],
+
   bossRise: ['That is the Ummagog. Do not be alarmed. Be accurate.'],
   bossWeak: ['Weak point exposed. The glowing one.', 'Another weak point. Shoot the glow.'],
   bossArmour: ["That's armour. Shoot the glowing part.", 'Armour. You are wasting heat.'],

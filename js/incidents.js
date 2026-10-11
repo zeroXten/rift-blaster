@@ -7,21 +7,39 @@
 // defaults to the dimension's hold), pack ([min, max] override), size, boss, quiet, waitSeen
 // (stays a crack until the player has looked at it).
 //
-// hints: scanner lines forced on the first occurrence of a game event.
+// Incident fields: creature (what the briefing's catalogue card shows; a list is cycled),
+// types (the creatures that may appear; omit for all of them), noDrops (no power-ups),
+// hints (scanner lines forced on the first occurrence of a game event).
 
 export const DIM_SPAWN = {
-  // interval / pack / max are [tear, breach]. max caps creatures alive from one rift.
+  // interval and max are [tear, breach]. max caps creatures alive from one rift.
   // hold is how many of its creatures must be shot before a rift of that dimension will seal.
-  vesh:     { type: 'yrrk',    interval: [7, 5.5], pack: [[3, 3], [3, 4]], max: [8, 10],  hold: 5 },
-  ulta:     { type: 'glomm',   interval: [4, 4],   pack: [[1, 1], [1, 1]], max: [1, 2],   hold: 2 },
-  hollow:   { type: 'skaith',  interval: [7, 5],   pack: [[1, 1], [1, 1]], max: [2, 3],   hold: 2 },
-  miridian: { type: 'ootheen', interval: [5, 4],   pack: [[1, 1], [1, 1]], max: [1, 2],   hold: 2 },
+  // spawns lists what can come through: pack is the group size as [tear, breach] ranges,
+  // weight is how often it is chosen, limit caps how many of that type the rift has out at once.
+  vesh: { interval: [7, 5.5], max: [8, 10], hold: 5, spawns: [
+    { type: 'yrrk', weight: 3, pack: [[3, 3], [3, 4]] },
+    { type: 'zik', weight: 2, pack: [[2, 2], [2, 3]] },
+  ] },
+  ulta: { interval: [4, 4], max: [1, 2], hold: 2, spawns: [
+    { type: 'glomm', weight: 3, pack: [[1, 1], [1, 1]] },
+    { type: 'brakk', weight: 1, pack: [[1, 1], [1, 1]], limit: 1 },
+  ] },
+  hollow: { interval: [7, 5], max: [2, 3], hold: 2, spawns: [
+    { type: 'skaith', weight: 3, pack: [[1, 1], [1, 1]] },
+    { type: 'fael', weight: 2, pack: [[1, 1], [1, 2]] },
+  ] },
+  miridian: { interval: [5, 4], max: [1, 2], hold: 2, spawns: [
+    { type: 'ootheen', weight: 3, pack: [[1, 1], [1, 1]] },
+    { type: 'thrum', weight: 2, pack: [[1, 1], [1, 1]] },
+  ] },
 };
 
 export const INCIDENTS = [
   {
     name: 'First Contact',
     creature: 'yrrk',
+    types: ['yrrk'],
+    noDrops: true,
     briefing: [
       'Incident one. A rift has opened in your immediate vicinity. This is normal now.',
       'Things called Yrrks will come through it. Small. Numerous. Catalogue entry: avoid.',
@@ -43,11 +61,12 @@ export const INCIDENTS = [
   },
   {
     name: 'Widening',
-    creature: 'glomm',
+    creature: ['glomm', 'zik'],
+    types: ['yrrk', 'zik', 'glomm'],
     briefing: [
-      'Several rifts this time. Each is held open from the other side. Shoot what comes through and the rift weakens. When the bar under it is empty, hold the crosshair on it to seal it.',
-      'Violet rifts lead to Ulta-9. Glomms live there. A Glomm grips the edge of its rift and pulls it wider.',
-      'Shoot it off. Two shots. A rift left alone widens: crack, tear, breach. Wider means more of them, faster.',
+      'Several rifts this time. Each is held open from the other side. Shoot what comes through and it weakens. When its bar is empty, hold the crosshair on it to seal it.',
+      'Violet rifts: Glomms. A Glomm grips the edge of its rift and pulls it wider. Two shots. Green rifts now also leak Ziks: tiny, fast, erratic.',
+      'Sometimes they drop equipment. Shoot it to take it.',
     ],
     maxOpen: 3,
     rifts: [
@@ -61,11 +80,12 @@ export const INCIDENTS = [
   },
   {
     name: "Don't Look Away",
-    creature: 'skaith',
+    creature: ['skaith', 'brakk'],
+    types: ['yrrk', 'zik', 'glomm', 'brakk', 'skaith'],
     briefing: [
-      'Cold white rifts lead to The Hollow. Skaiths come from there.',
-      'A Skaith only moves when you are not looking at it. Three shots.',
-      'Keep turning. I would watch your back, but I was not fitted with a rear sensor.',
+      'Cold white rifts lead to The Hollow. A Skaith only moves when you are not looking at it. Three shots. Keep turning.',
+      'Ulta-9 has also sent Brakks. Slow. Armoured. Five shots. Do not let one arrive.',
+      'I would watch your back, but I was not fitted with a rear sensor.',
     ],
     maxOpen: 3,
     rifts: [
@@ -80,11 +100,11 @@ export const INCIDENTS = [
   },
   {
     name: 'It Sees You',
-    creature: 'ootheen',
+    creature: ['ootheen', 'thrum', 'fael'],
     briefing: [
-      'Amber rifts lead to Miridian. An Ootheen is an eye. It stares, and the staring hurts.',
-      'It relocates if you hold the crosshair on it for more than 0.8 seconds. Shoot first. Think never. You are suited.',
-      'Everything else you have met is also attending.',
+      'Amber rifts lead to Miridian. An Ootheen is an eye. Its stare hurts, and it jumps away if you aim at it for too long. Shoot fast.',
+      'Thrums paw the ground, then charge. One shot stops them, if you are quick.',
+      'The Hollow now sends Faels too. They are only solid half the time.',
     ],
     maxOpen: 3,
     rifts: [

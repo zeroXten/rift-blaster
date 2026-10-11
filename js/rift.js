@@ -208,9 +208,15 @@ export class Rift {
     if (room <= 0) { this.spawnT = Math.max(this.spawnT, RESPITE); return; }
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
-    const [a, b] = this.def.pack || sp.pack[st - 1];
+    // Pick what comes through, from the types this incident allows.
+    const options = sp.spawns.filter(o => this.game.allows(o.type)
+      && (!o.limit || this.game.creatures.filter(c => c.rift === this && c.def.sprite === o.type).length < o.limit));
+    let roll = Math.random() * options.reduce((sum, o) => sum + o.weight, 0);
+    const choice = options.find(o => (roll -= o.weight) < 0);
+    if (!choice) { this.spawnT = 1; return; }
+    const [a, b] = this.def.pack || choice.pack[st - 1];
     const n = Math.max(1, a + ((Math.random() * (b - a + 1)) | 0) + level.pack);
-    this.send(Math.min(n, room), sp.type);
+    this.send(Math.min(n, room), choice.type);
   }
 
   // Queue n creatures to push through, one after another.
@@ -231,6 +237,13 @@ export class Rift {
     this.flare = 0.22;
     play('absorb', this.p.pan);
     this.game.fx.implode(this.p.x, this.p.y, DIMS[this.dim].ramp.slice(1), this.hw + 14, 12);
+  }
+
+  // Hit by a rift charge: it comes apart and closes at once, however strong it was.
+  collapse() {
+    play('podbreak', this.p.pan);
+    this.game.fx.nova(this.p.x, this.p.y, DIMS[this.dim].ramp);
+    this.seal();
   }
 
   seal() {

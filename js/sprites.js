@@ -8,6 +8,9 @@ export const PAL = {
   w: '#f4f4f4',
   r: '#ff3b3b',
   y: '#ffd23f',
+  g: '#8be025',
+  c: '#39e6d0',
+  b: '#7fb4ff',
 };
 
 export const DIMS = {
@@ -298,6 +301,87 @@ const GRIDS = {
 
 // The Ummagog's young are Yrrk-shaped.
 GRIDS.spawnling = GRIDS.yrrk;
+
+// Zik: a tiny dart with wings, up and down.
+GRIDS.zik = { mirror: true, frames: [[
+  'k....',
+  '4k...',
+  '.3kkk',
+  '.k333',
+  '..kw3',
+  '...k3',
+  '....k',
+], [
+  '.....',
+  '..kkk',
+  '.k333',
+  'k3kw3',
+  '4k.k3',
+  'k...k',
+  '.....',
+]] };
+
+// Brakk: a slow armoured brute, mid-stomp in the second frame.
+const BRAKK = [
+  '...kkkkkk',
+  '..k222222',
+  '.k2333333',
+  'k23333443',
+  'k233k3333',
+  'k23kwk333',
+  'k23kok333',
+  'k2233kkkk',
+  'k12233333',
+  'k12222222',
+  'k1k22k222',
+  'k1k22k222',
+  '.k1222222',
+  '.kk11kk11',
+  '..kkk.kkk',
+];
+GRIDS.brakk = { mirror: true, frames: [[...BRAKK, '..k.k.k.k'], [...BRAKK, '.k.k.k.k.']] };
+
+// Thrum: all horns and teeth. Its eyes go red once it has decided to charge.
+const thrum = eyes => [
+  'k.......',
+  'kk....kk',
+  'k3k..k33',
+  '.k3kk333',
+  '.k333333',
+  'k333kk33',
+  eyes,
+  'k333kk33',
+  'k2333333',
+  '.k2kwkwk',
+  '.k22kkkk',
+  '..kk2222',
+  '....kkkk',
+];
+GRIDS.thrum = { mirror: true, frames: [thrum('k33kwwk3'), thrum('k33krrk3')] };
+
+// Fael: a drifting wisp with a ragged hem.
+const FAEL = [
+  '...kkk',
+  '..k444',
+  '.k4444',
+  '.k4oo4',
+  '.k4oo4',
+  '.k4444',
+  '.k3443',
+  '..k333',
+  '..k3k3',
+];
+GRIDS.fael = { mirror: true, frames: [
+  [...FAEL, '...k3k', '...k2k', '....k2', '....kk'],
+  [...FAEL, '..k3k.', '..k2k.', '...k2k', '....kk'],
+] };
+
+// Power-up icons. Fixed colours, so the dimension they are built with does not matter.
+GRIDS.pu_rapid = { frames: [['...yy..', '..yy...', '.yyyy..', '...yy..', '..yy...', '.yy....', '.y.....']] };
+GRIDS.pu_health = { frames: [['..ggg..', '..ggg..', 'ggggggg', 'ggggggg', 'ggggggg', '..ggg..', '..ggg..']] };
+GRIDS.pu_nova = { frames: [['r..r..r', '.r.r.r.', '..rrr..', 'rrrwrrr', '..rrr..', '.r.r.r.', 'r..r..r']] };
+GRIDS.pu_stasis = { frames: [['...b...', '.b.b.b.', '..bbb..', 'bbbwbbb', '..bbb..', '.b.b.b.', '...b...']] };
+GRIDS.pu_charge = { frames: [['c.....c', '.c...c.', '..c.c..', '...w...', '..c.c..', '.c...c.', 'c.....c']] };
 
 const cache = new Map();
 

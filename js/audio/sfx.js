@@ -136,6 +136,19 @@ const SOUNDS = {
     tone({ f: 3150, dur: 0.4, vol: 0.07 });
     noise({ dur: 0.08, vol: 0.18, f: 5000 });
   },
+  kill_zik() { tone({ f: 2400, f2: 900, dur: 0.07, type: 'square', vol: 0.12 }); },
+  kill_brakk() {
+    noise({ dur: 0.4, vol: 0.3, filter: 'lowpass', f: 700, f2: 90 });
+    tone({ f: 140, f2: 40, dur: 0.45, type: 'square', vol: 0.22, mod: { ratio: 0.5, index: 4 } });
+  },
+  kill_thrum() {
+    tone({ f: 330, f2: 110, dur: 0.22, type: 'sawtooth', vol: 0.22, mod: { ratio: 1.5, index: 3 } });
+    noise({ dur: 0.12, vol: 0.18, filter: 'bandpass', f: 900 });
+  },
+  kill_fael() {
+    noise({ dur: 0.5, vol: 0.14, filter: 'bandpass', f: 3000, f2: 600, q: 5 });
+    tone({ f: 1500, f2: 2600, dur: 0.3, vol: 0.07 });
+  },
   kill_ootheen() {
     tone({ f: 600, f2: 1500, dur: 0.06, vol: 0.2 });
     tone({ f: 1200, f2: 200, dur: 0.22, delay: 0.05, type: 'triangle', vol: 0.18, mod: { ratio: 7, index: 1.5 } });
@@ -193,6 +206,26 @@ const SOUNDS = {
   },
   stun() {
     [880, 740, 587, 440, 330].forEach((f, i) => tone({ f, dur: 0.16, delay: i * 0.11, type: 'square', vol: 0.12 }));
+  },
+
+  // A Thrum winding up to charge
+  windup() { tone({ f: 90, f2: 260, dur: 1.1, type: 'sawtooth', vol: 0.16, attack: 0.3, mod: { ratio: 0.5, index: 5, index2: 9 } }); },
+
+  // Power-ups
+  drop() {
+    tone({ f: 1320, dur: 0.08, type: 'triangle', vol: 0.14 });
+    tone({ f: 1760, dur: 0.14, delay: 0.08, type: 'triangle', vol: 0.14 });
+  },
+  pickup() {
+    [660, 880, 1320, 1760].forEach((f, i) => tone({ f, dur: 0.12, delay: i * 0.05, type: 'square', vol: 0.12 }));
+  },
+  nova() {
+    tone({ f: 160, f2: 30, dur: 0.9, vol: 0.4 });
+    noise({ dur: 0.8, vol: 0.35, filter: 'lowpass', f: 2500, f2: 120 });
+    tone({ f: 900, f2: 80, dur: 0.3, type: 'sawtooth', vol: 0.14 });
+  },
+  stasis() {
+    [2093, 1568, 1175, 784].forEach((f, i) => tone({ f, dur: 0.5, delay: i * 0.09, vol: 0.09, mod: { ratio: 3.01, index: 1.5 } }));
   },
 
   // Player

@@ -174,6 +174,13 @@ export class Ummagog extends Creature {
     }
   }
 
+  // Caught in a grenade blast: it only hurts if a weak point is exposed.
+  blasted() {
+    if (this.phase !== 'fight' || this.active < 0) return;
+    this.part = this.active;
+    for (let i = 0; i < 3 && this.phase === 'fight' && this.active === this.part; i++) this.hit();
+  }
+
   // Not sealed in time: it gets up and regrows one weak point.
   recover() {
     this.setPhase('fight');

@@ -1,6 +1,6 @@
 // Edge arrows: every unsealed rift that is off screen gets one in its dimension's colour,
 // so a rift can be found from the arrows alone. Creatures closing in from off screen get a
-// small red one.
+// small red one, and a power-up waiting to be taken gets one in its own colour.
 
 import { UI } from './config.js';
 import { view } from './projection.js';
@@ -38,6 +38,9 @@ export function drawIndicators(game) {
   const t = game.t;
   for (const c of game.creatures) {
     if (c.state === 'active' && !c.on && c.r < 5 && c.def.damage) arrow(c.p, UI.red, 4, t * 2, false);
+  }
+  for (const item of game.pickups) {
+    if (!item.on) arrow(item.p, item.def.color, 4, t * 1.5, false);
   }
   for (const rift of game.rifts) {
     if (rift.sealed || rift.on) continue;

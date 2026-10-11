@@ -44,6 +44,7 @@ let game = null;
 let drag = null;
 let last = performance.now();
 let fps = 60;
+let firePointer = null;    // the finger holding the fire button, for rapid fire
 let autoFull = true;      // go full screen when an incident starts, until the player leaves it
 let toast = null;
 
@@ -163,6 +164,7 @@ function finish(result) {
 
 function pause() {
   if (ui.state !== 'play') return;
+  releaseTrigger(firePointer);
   scanner.hush();
   setState('paused');
 }
@@ -229,13 +231,26 @@ canvas.addEventListener('pointerdown', e => {
   if (ui.state !== 'play') return;
   const hit = frameHit(toCanvas(e));
   if (hit === 'full') return;      // handled on click, below
-  if (hit === 'fire') game.fire();
+  if (hit === 'fire') { pullTrigger(e.pointerId); return; }
   else if (hit === 'pause') { play('ui'); pause(); }
   else if (hit === 'recal') { play('ui'); doRecalibrate(); }
   else if (hit) return;
   else if (orient.mode === 'debug') drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
-  else game.fire();
+  else pullTrigger(e.pointerId);
 });
+
+// Fire once, and remember the trigger is held: rapid fire keeps going until it is let go.
+function pullTrigger(id) {
+  firePointer = id;
+  game.trigger = true;
+  game.fire();
+}
+
+function releaseTrigger(id) {
+  if (id !== firePointer) return;
+  firePointer = null;
+  if (game) game.trigger = false;
+}
 
 window.addEventListener('pointermove', e => {
   if (!drag || e.pointerId !== drag.id) return;
@@ -249,11 +264,15 @@ window.addEventListener('pointermove', e => {
 });
 
 window.addEventListener('pointerup', e => {
+  releaseTrigger(e.pointerId);
   if (!drag || e.pointerId !== drag.id) return;
   if (drag.moved < 6 && ui.state === 'play') game.fire();
   drag = null;
 });
-window.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
+window.addEventListener('pointercancel', e => {
+  releaseTrigger(e.pointerId);
+  if (drag && e.pointerId === drag.id) drag = null;
+});
 
 // Menus use click, which is the event iOS accepts as a user gesture for permissions and audio.
 canvas.addEventListener('click', e => {
@@ -267,7 +286,7 @@ canvas.addEventListener('click', e => {
 
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.code === 'Space' && ui.state === 'play') { game.fire(); e.preventDefault(); }
+  if (e.code === 'Space' && ui.state === 'play') { pullTrigger('key'); e.preventDefault(); }
   else if (e.code === 'KeyP' || e.code === 'Escape') ui.state === 'paused' ? setState('play') : pause();
   else if (e.code === 'KeyR' && ui.state === 'play') doRecalibrate();
   else if (e.code === 'KeyF') toggleFullscreen();
@@ -279,6 +298,8 @@ window.addEventListener('keydown', e => {
     start();
   }
 });
+
+window.addEventListener('keyup', e => { if (e.code === 'Space') releaseTrigger('key'); });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('visibilitychange', () => {

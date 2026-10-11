@@ -56,7 +56,8 @@ js/render.js        low-resolution canvas, camera palette reduction, pixel primi
 js/sprites.js       sprite grids and palettes
 js/font.js          pixel font
 js/rift.js          rift stages, spawning, sealing, rift art
-js/creatures/       yrrk, glomm, skaith, ootheen, ummagog
+js/creatures/       yrrk, zik, glomm, brakk, skaith, fael, ootheen, thrum, ummagog
+js/pickups.js       power-ups dropped by creatures
 js/weapon.js        aiming, heat, seal-by-gaze
 js/game.js          one incident in play
 js/frame.js         the scanner's casing: gauges, pause / recalibrate keys, fire button
@@ -75,4 +76,6 @@ These can only be judged with the phone in your hand:
 - Difficulty: the three levels on the title screen are a table of multipliers at the bottom of
   `js/config.js` (hard is the game as designed; easy is meant for small children). Rift timings
   are in `js/incidents.js`, damage and speed in each creature file.
+- Variety: which creatures each dimension sends, and how often, is the `spawns` list in
+  `js/incidents.js`; power-up types, durations and frequency are at the top of `js/pickups.js`.
 - Music: patterns are note data at the top of `js/audio/music.js`.

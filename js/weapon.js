@@ -17,6 +17,7 @@ export class Weapon {
     this.heat = 0;
     this.lock = 0;          // seconds of overheat lockout left
     this.kick = 0;
+    this.auto = 0;          // seconds until rapid fire's next shot
     this.swallowed = 0;     // seconds left of the "no effect" notice after firing into a rift
     this.target = null;     // creature under the crosshair
     this.rift = null;       // rift under the crosshair
@@ -44,6 +45,8 @@ export class Weapon {
       this.heat = Math.max(0, this.heat - this.decay * dt);
     }
     game.fx.steam = this.lock > 0;
+    // Rapid fire: no heat, and holding the fire button keeps firing.
+    if (game.rapid > 0 && game.trigger && !game.ending && (this.auto -= dt) <= 0) this.fire(game);
     this.target = this.pick(game);
 
     // Sealing: progress builds while an unblocked rift stays near the centre. Looking away resets it.
@@ -71,28 +74,41 @@ export class Weapon {
     sealTone(this.rift && !this.rift.blocked ? this.seal : 0);
   }
 
+  // Rapid fire: taking the power-up also clears any overheat.
+  cool() {
+    this.heat = 0;
+    this.lock = 0;
+  }
+
   fire(game) {
     if (this.lock > 0) { play('denied'); return; }
-    this.heat += HEAT_PER_SHOT * level.heat;
+    const rapid = game.rapid > 0;
+    if (!rapid) this.heat += HEAT_PER_SHOT * level.heat;
     this.kick = 0.08;
+    this.auto = 0.11;
     play('shot');
+    // In order: a creature out in the open, a power-up, then a rift. A rift's energy swallows
+    // the shot, which does nothing to it or to whatever is still inside, unless a rift charge
+    // is loaded, in which case that one shot closes it.
     const c = this.pick(game);
-    // Not on a creature that is out in the open, but on a rift: its energy swallows the shot.
-    // That costs heat and does nothing, to the rift or to whatever is still inside it.
-    const rift = c ? null : game.rifts.find(r => r.covers(this.tolPx));
-    game.fx.shot(c ? 'hit' : rift ? 'absorb' : 'miss', this.heat, rift && DIMS[rift.dim].ramp);
-    if (rift) {
+    const item = c ? null : game.pickups.find(p => p.aimed(this.tolPx));
+    const rift = c || item ? null : game.rifts.find(r => r.covers(this.tolPx));
+    const charged = rift && game.charge && !rift.def.boss;
+    game.fx.shot(c || item || charged ? 'hit' : rift ? 'absorb' : 'miss', rapid ? 0 : this.heat, rift && DIMS[rift.dim].ramp);
+    if (rift && !charged) {
       rift.absorb();
       this.swallowed = 0.7;
       scanner.say('absorbed');
       game.emit('absorbed');
     } else {
       game.stats.shots++;
-      if (c) {
+      if (c || item || charged) {
         game.stats.hits++;
         game.misses = 0;
-        c.hit();
         vibrate(15);
+        if (c) c.hit();
+        else if (item) game.collect(item);
+        else { game.charge = false; rift.collapse(); scanner.say('chargeUsed', true); }
       } else if (++game.misses >= 4) {
         game.misses = 0;
         scanner.say('miss');

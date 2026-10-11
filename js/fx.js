@@ -24,6 +24,7 @@ export class Fx {
     this.glitch = 0;      // camera feed tearing
     this.white = 0;
     this.steam = false;   // set by the weapon while overheated
+    this.rings = [];      // expanding shockwaves: { x, y, t, colors }
   }
 
   add(x, y, vx, vy, life, color, size = 1, grav = 0) {
@@ -45,6 +46,13 @@ export class Fx {
       this.add(x + c * r, y + s * r, (-c * r) / life, (-s * r) / life, life, pick(colors), 2);
     }
     if (n >= 30) this.white = 0.12;
+  }
+
+  // A big blast: shockwave rings, a spray of pixels and a flash.
+  nova(x, y, colors) {
+    this.rings.push({ x, y, t: 0, colors });
+    this.burst(x, y, colors, 40, 150, 2);
+    this.white = 0.18;
   }
 
   // end is 'hit', 'miss' or 'absorb' (swallowed by a rift, whose colours are passed as tint).
@@ -73,6 +81,8 @@ export class Fx {
     this.red = Math.max(0, this.red - dt);
     this.glitch = Math.max(0, this.glitch - dt);
     this.white = Math.max(0, this.white - dt);
+    for (const r of this.rings) r.t += dt;
+    if (this.rings.length && this.rings[0].t > 0.45) this.rings.shift();
     if (this.steam && Math.random() < 0.6) {
       this.add(view.cx + rand(-70, 70), view.y0 + view.h - 2, rand(-6, 6), -rand(20, 50), rand(0.4, 0.8), pick(STEAM), Math.random() < 0.3 ? 2 : 1);
     }
@@ -90,6 +100,11 @@ export class Fx {
   draw() {
     const ctx = R.ctx, { x0, y0, w, h } = view, by = y0 + h;
     for (const p of this.parts) px(p.x, p.y, p.size, p.size, p.color);
+    for (const r of this.rings) {
+      const k = r.t / 0.45, n = r.colors.length;
+      ring(r.x, r.y, 6 + k * 70, 0, 6.3, r.colors[n - 1], k < 0.5 ? 2 : 1);
+      ring(r.x, r.y, 3 + k * 45, 0, 6.3, r.colors[n - 2] || r.colors[0]);
+    }
     if (this.zapT > 0) line(this.zx, this.zy, view.cx, by, ((this.zapT * 40) | 0) & 1 ? '#ffe9a0' : '#ffa91f', 2);
     if (this.bolt) this.drawBeam(this.bolt, by);
     if (this.red > 0) {

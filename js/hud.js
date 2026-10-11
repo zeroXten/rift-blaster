@@ -3,9 +3,10 @@
 
 import { UI } from './config.js';
 import { view } from './projection.js';
-import { R, px, ring } from './render.js';
+import { R, blit, px, ring } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame, gauges } from './frame.js';
+import { POWERUPS, powerIcon } from './pickups.js';
 import { scanner } from './scanner.js';
 
 export function drawHud(game) {
@@ -28,6 +29,23 @@ export function drawHud(game) {
   drawText('HEAT', hg.x, hg.y, hc);
   px(hg.bar + 2, hg.y + 1, Math.round(((hg.barW - 4) * Math.min(100, wp.heat)) / 100), 5, hc);
   if (hot && blink) drawTextS('OVERHEAT', hg.bar + hg.barW / 2, hg.y, UI.w, 1, 0.5);
+
+  // Power-ups in force, down the left of the screen: a timer bar, or a prompt for the rift charge.
+  let ey = v.y + 18;
+  const chip = (kind, left, label) => {
+    const col = POWERUPS[kind].color;
+    blit(powerIcon(kind), v.x + 9.5, ey + 3.5, 1);
+    if (label) drawTextS(label, v.x + 16, ey, col);
+    else {
+      px(v.x + 16, ey + 1, 24, 5, UI.k);
+      px(v.x + 17, ey + 2, Math.round(22 * left), 3, col);
+    }
+    ey += 11;
+  };
+  if (game.rapid > 0) chip('rapid', game.rapid / POWERUPS.rapid.time);
+  if (game.stasis > 0) chip('stasis', game.stasis / POWERUPS.stasis.time);
+  if (game.charge) chip('charge', 0, 'RIFT CHARGE: SHOOT A RIFT');
+  if (game.banner && (game.banner.t > 0.5 || blink)) drawTextS(game.banner.text, cx, v.y + 34, game.banner.color, 2, 0.5);
 
   // Crosshair: red when overheated, yellow when on a target.
   const cc = hot ? UI.red : wp.target ? UI.yel : UI.c;
