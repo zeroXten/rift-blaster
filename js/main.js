@@ -11,7 +11,7 @@ import {
   debugAim, debugLook, orient, recalibrate, requestMotionPermission, startDebug, startSensor,
   updateOrientation, waitForData,
 } from './orientation.js';
-import { resumeCamera, startCamera } from './video.js';
+import { camera, resumeCamera, startCamera } from './video.js';
 import { audio, initAudio, play, sealTone } from './audio/sfx.js';
 import { music, setMusicMode } from './audio/music.js';
 import { LINES, scanner } from './scanner.js';
@@ -81,34 +81,42 @@ async function start() {
   // iOS only grants motion access from inside this tap, and only if it is asked for before the
   // camera: otherwise the camera prompt consumes the tap and motion is silently denied.
   const motionAsked = DEBUG ? null : requestMotionPermission();
-  initAudio();
-  scanner.unlock();
-  keepAwake();
-
-  if (DEBUG) {
-    startDebug();
-    // No help screen here: without a webcam, or with it refused, the lattice backdrop stands in.
-    if (!PLAIN) await startCamera().catch(() => {});
-  } else {
-    const motion = await motionAsked;
-    if (motion === 'granted') startSensor();
-    let camError = null;
-    try { await startCamera(); } catch (e) { camError = e; }
-    // The first reading can take a few seconds to arrive, most of all straight after the
-    // camera has started, so be patient before deciding there is no sensor.
-    const moving = motion === 'granted' && await waitForData(4000);
-    if (!moving || camError) {
-      ui.help = {
-        ios: IOS,
-        motion: moving ? null : motion === 'denied' ? 'denied' : 'missing',
-        camera: !camError ? null : camError.name === 'InsecureContext' ? 'insecure' : 'denied',
-      };
-      ui.starting = false;
-      return setState('help');
+  let problem = null;
+  try {
+    initAudio();
+    scanner.unlock();
+    keepAwake();
+    if (DEBUG) {
+      startDebug();
+      // Not waited for: the webcam feed appears if and when it is allowed, and the lattice
+      // backdrop stands in until then.
+      if (!PLAIN) startCamera().catch(() => {});
+    } else {
+      const motion = await motionAsked;
+      if (motion === 'granted') startSensor();
+      // Neither wait is open-ended: an unanswered prompt or a silent sensor ends up on the
+      // help screen, which carries on by itself if the answer arrives late.
+      let camError = null;
+      try { await startCamera(20000); } catch (e) { camError = e; }
+      // The first reading can take a few seconds to arrive, most of all straight after the
+      // camera has started, so be patient before deciding there is no sensor.
+      const moving = motion === 'granted' && await waitForData(4000);
+      if (!moving || camError) {
+        problem = {
+          ios: IOS,
+          motion: moving ? null : motion === 'denied' ? 'denied' : 'missing',
+          camera: !camError ? null : camError.name === 'InsecureContext' ? 'insecure' : 'denied',
+        };
+      }
     }
+  } catch (e) {
+    // Whatever went wrong, do not leave the title screen stuck on "stand by".
+    console.error(e);
+    if (!DEBUG) problem = { ios: IOS, motion: orient.hasData ? null : 'missing', camera: camera.ready ? null : 'denied' };
   }
   ui.starting = false;
-  begin();
+  if (problem && (problem.motion || problem.camera)) { ui.help = problem; setState('help'); }
+  else begin();
 }
 
 function begin() {
@@ -119,7 +127,7 @@ function begin() {
   startLevel();
 }
 
-// Starts a run, or another attempt at the level it was lost on, from full integrity.
+// Starts a run, or another attempt at the level it was lost on, with everything restored.
 function startLevel() {
   setLevel(run.level);
   game = new Game(levelDef(run.level), { inv: run.inv });
@@ -132,7 +140,7 @@ function startLevel() {
 function nextLevel() {
   const s = game.stats;
   run.kills += s.kills;
-  run.score += Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.integrity) * 5) * level.score);
+  run.score += Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.health + game.reality) * 3) * level.score);
   run.checkpoint = run.score;
   run.level++;
   recordScore(store, run);
@@ -168,7 +176,8 @@ function keepAwake() {
 function gameOver() {
   run.kills += game.stats.kills;
   recordScore(store, run);
-  ui.over = { level: run.level, score: run.score, kills: run.kills, comment: pick(LINES.gameover) };
+  const cause = game.cause || 'health';
+  ui.over = { level: run.level, score: run.score, kills: run.kills, cause, comment: pick(LINES[cause === 'reality' ? 'collapsed' : 'gameover']) };
   setState('gameover');
   scanner.speak(ui.over.comment);
 }
@@ -339,10 +348,13 @@ function tick(dt) {
   setView(orient.mode === 'none' ? qAxis(0, 1, 0, performance.now() * -0.00004) : orient.q, R.view, FOV_LONG);
   scanner.update(dt);
 
-  // If the sensor was only slow to answer, carry on from the help screen without being asked.
-  if (ui.state === 'help' && ui.help.motion === 'missing' && orient.mode === 'sensor' && orient.hasData) {
-    if (ui.help.camera) ui.help.motion = null;
-    else begin();
+  // If the sensor or the camera was only slow to answer, carry on from the help screen
+  // without being asked.
+  if (ui.state === 'help') {
+    const h = ui.help;
+    if (h.motion === 'missing' && orient.mode === 'sensor' && orient.hasData) h.motion = null;
+    if (h.camera === 'denied' && camera.ready) h.camera = null;
+    if (!h.motion && !h.camera) begin();
   }
 
   if (ui.state === 'play') {

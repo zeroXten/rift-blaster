@@ -1,8 +1,10 @@
 // The game in play: rifts, creatures, weapon and effects. One Game lasts a whole run: as each
 // level's last rift is sealed, advance() lays the next level over the top of it without a
-// break, until Reality Integrity reaches zero.
+// break. There are two ways to lose. Health is the player: creatures that reach them take it.
+// Reality is the room: every rift left open wears it down, and a crowd of creatures adds to
+// that, so the run can be lost without ever being touched.
 
-import { MAX_CREATURES, PITCH_LIMIT, level } from './config.js';
+import { CROWD_FREE, CROWD_STRAIN, MAX_CREATURES, PITCH_LIMIT, SEAL_RESTORES, STRAIN, level } from './config.js';
 import { DEG, view, wrapAngle } from './projection.js';
 import { R, cameraFrame, debugBackdrop, px } from './render.js';
 import { camera } from './video.js';
@@ -22,12 +24,13 @@ import { rand, vibrate } from './util.js';
 const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
 export class Game {
-  // def is a level from levels.js. integrity and inv (power-ups held, by kind) carry over
-  // from the level before.
-  constructor(def, { integrity = 100, inv }) {
+  // def is a level from levels.js; inv is the power-ups held, by kind.
+  constructor(def, { inv }) {
     this.def = def;
     this.t = 0;
-    this.integrity = integrity;
+    this.health = 100;
+    this.reality = 100;
+    this.cause = null;        // what ended the run: 'health' or 'reality'
     this.inv = inv;
     this.rifts = [];
     this.creatures = [];
@@ -70,7 +73,8 @@ export class Game {
     this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
     this.emitted = {};
     this.quiet = 0;
-    this.integrity = Math.min(100, this.integrity + 20);
+    this.health = Math.min(100, this.health + 15);
+    this.reality = Math.min(100, this.reality + 15);
     this.weapon.retune();
   }
 
@@ -137,7 +141,7 @@ export class Game {
     if (Math.random() > 0.22 * level.drops && this.sinceDrop < 6) return;
     // Health turns up when it is needed; nothing turns up that the player is already full of.
     const weight = kind => (this.inv[kind] >= MAX_HELD ? 0
-      : kind === 'health' ? (this.integrity < 50 ? 4 : this.integrity < 85 ? 2 : 0.5)
+      : kind === 'health' ? (this.health < 50 ? 4 : this.health < 85 ? 2 : 0.5)
       : POWERUPS[kind].weight);
     const kinds = Object.keys(POWERUPS);
     let roll = Math.random() * kinds.reduce((sum, k) => sum + weight(k), 0);
@@ -168,14 +172,14 @@ export class Game {
     const def = POWERUPS[kind];
     if (this.ending) return;
     if (!this.inv[kind]) { play('denied'); scanner.say('empty'); return; }
-    if (kind === 'health' && this.integrity >= 100) { play('denied'); scanner.say('full'); return; }
+    if (kind === 'health' && this.health >= 100) { play('denied'); scanner.say('full'); return; }
     this.inv[kind]--;
     this.banner = { text: def.name, color: def.color, t: 1.4 };
     play('pickup');
     vibrate(30);
     scanner.say(kind, true);
     if (kind === 'rapid') { this.rapid = def.time; this.weapon.cool(); }
-    else if (kind === 'health') this.integrity = Math.min(100, this.integrity + 25);
+    else if (kind === 'health') this.health = Math.min(100, this.health + 25);
     else if (kind === 'stasis') { this.stasis = def.time; play('stasis'); }
     else if (kind === 'charge') this.charge = true;
     else this.blast();
@@ -198,6 +202,7 @@ export class Game {
 
   onSealed(rift) {
     this.stats.sealed++;
+    this.reality = Math.min(100, this.reality + SEAL_RESTORES);
     vibrate(60);
     for (const c of this.creatures) {
       if (c.rift !== rift) continue;
@@ -216,12 +221,12 @@ export class Game {
 
   damage(amount, source) {
     if (this.ending) return;
-    this.integrity = Math.max(0, this.integrity - amount * level.damage);
+    this.health = Math.max(0, this.health - amount * level.damage);
     this.streak = 0;
     this.fx.hurt();
     play('damage', source?.p.pan);
     vibrate([80, 40, 80]);
-    if (this.integrity <= 30 && !this.lowWarned) { this.lowWarned = true; scanner.say('low', true); }
+    if (this.health <= 30 && !this.lowWarned) { this.lowWarned = true; scanner.say('low', true); }
     else scanner.say('damage');
   }
 
@@ -260,6 +265,7 @@ export class Game {
     this.creatures = this.creatures.filter(c => !c.dead);
     this.pickups = this.pickups.filter(item => !item.taken && item.life > 0);
 
+    this.strain(frozen ? 0 : dt);
     if (this.t > 0.8) this.emit('start');
     if (this.rifts[0]?.on) this.emit('riftSeen');
     this.conduct();
@@ -269,7 +275,8 @@ export class Game {
       if (this.endT <= 0) this.result = this.ending;
     } else if (this.cleared) {
       // Waiting for main.js to supply the next level, which it does before the next frame.
-    } else if (this.integrity <= 0) {
+    } else if (this.health <= 0 || this.reality <= 0) {
+      this.cause = this.health <= 0 ? 'health' : 'reality';
       this.ending = 'lost';
       this.endT = 1.6;
       play('lose');
@@ -279,6 +286,27 @@ export class Game {
       this.cleared = true;
       play('win');
       for (const c of this.creatures) c.die(false);
+    }
+  }
+
+  // Open rifts wear reality down, wider ones faster, and so does a crowd of creatures. It
+  // mends slowly while nothing is open.
+  strain(dt) {
+    if (this.ending) return;
+    let rate = 0, open = 0;
+    for (const r of this.rifts) {
+      if (r.sealed) continue;
+      open++;
+      // The boss's rift has to stay open for the whole fight, so it strains far less.
+      rate += STRAIN[r.stage] * (r.def.boss ? 0.25 : 1);
+    }
+    let live = 0;
+    for (const c of this.creatures) if (!c.pods && c.state === 'active') live++;
+    rate += Math.max(0, live - CROWD_FREE) * CROWD_STRAIN;
+    const before = this.reality;
+    this.reality = Math.max(0, Math.min(100, this.reality + (open ? -rate * level.strain : 1.5) * dt));
+    for (const mark of [60, 30]) {
+      if (before > mark && this.reality <= mark) scanner.say(mark === 60 ? 'fracturing' : 'collapsing', true);
     }
   }
 
@@ -309,6 +337,7 @@ export class Game {
     }
     for (const item of this.pickups) item.draw();
     this.fx.draw();
+    this.fx.drawFracture(this.reality, this.health);
     drawIndicators(this);
     drawHud(this);
   }

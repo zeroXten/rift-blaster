@@ -1,5 +1,5 @@
 // Thrum (Miridian, amber): aggressive but easy to stop. It paws the ground in front of its
-// rift, flashing, then charges in a straight line. Big target, one shot, if the player is quick.
+// rift, flashing, then charges, swerving once on the way in. Big target, one shot, if the player is quick.
 
 import { REACH_DIST, level } from '../config.js';
 import { DEG } from '../projection.js';
@@ -8,7 +8,7 @@ import { scanner } from '../scanner.js';
 import { Creature } from './base.js';
 
 export class Thrum extends Creature {
-  static def = { sprite: 'thrum', size: 1.5, hp: 1, damage: 9, emerge: 0.9 };
+  static def = { sprite: 'thrum', size: 1.5, hp: 1, damage: 12, emerge: 0.9 };
 
   constructor(game, rift, o) {
     super(game, rift, o);
@@ -28,7 +28,7 @@ export class Thrum extends Creature {
       return;
     }
     this.r -= 4.5 * (this.elite ? 1.15 : 1) * level.speed * dt;
-    this.yaw = this.rift.yaw;
+    this.yaw = this.rift.yaw + Math.sin(this.progress * Math.PI * 2) * 7 * DEG;
     this.pitch = this.rift.pitch * (1 - this.progress);
     if (this.r <= REACH_DIST) this.reach();
   }

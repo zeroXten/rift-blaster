@@ -1,4 +1,4 @@
-// In-game HUD. Reality Integrity, Scanner Heat and the controls are in the casing (frame.js
+// In-game HUD. Health, Reality Integrity, Scanner Heat and the controls are in the casing (frame.js
 // draws that); on the screen there is the crosshair, the seal ring, what the crosshair is on,
 // and the scanner's remarks.
 
@@ -15,19 +15,20 @@ export function drawHud(game) {
   const cx = Math.round(view.cx), cy = Math.round(view.cy);
   const blink = ((t * 6) | 0) & 1, hot = wp.lock > 0;
 
-  const iv = game.integrity, ic = iv > 60 ? UI.c : iv > 30 ? UI.yel : UI.red;
+  // Health (the player) and Reality (the room), side by side in the top strip.
+  const grade = (value, good) => (value > 60 ? good : value > 30 ? UI.yel : UI.red);
+  const worst = Math.min(game.health, game.reality);
   drawFrame({
     live: true, pressed: wp.kick > 0, sealing: game.sealing, hot,
-    led: iv > 60 ? '#8be025' : iv > 30 ? UI.yel : blink ? UI.red : '#47101a',
+    led: worst > 60 ? '#8be025' : worst > 30 ? UI.yel : blink ? UI.red : '#47101a',
     inv: game.inv, active: { rapid: game.rapid > 0, stasis: game.stasis > 0, charge: game.charge },
   });
-
-  // Reality Integrity, top strip
-  const { reality: rg, heat: hg } = gauges();
-  drawText('REALITY', rg.x, rg.y, ic);
-  if (iv > 30 || blink) px(rg.bar + 2, rg.y + 1, Math.round(((rg.barW - 4) * iv) / 100), 5, ic);
-  drawText(Math.ceil(iv) + '%', rg.bar + rg.barW + 4, rg.y, ic);
-  drawText(`RIFTS ${game.stats.sealed}/${game.total}`, rg.right, rg.y, UI.w, 1, 1);
+  const { health: hp, reality: rg, heat: hg } = gauges();
+  for (const [g, name, value, good] of [[hp, 'HEALTH', game.health, '#8be025'], [rg, 'REALITY', game.reality, UI.c]]) {
+    const col = grade(value, good);
+    drawText(name, g.x, g.y, col);
+    if (value > 30 || blink) px(g.bar + 2, g.y + 1, Math.round(((g.barW - 4) * value) / 100), 5, col);
+  }
 
   // Scanner Heat, bottom strip
   const hc = hot ? UI.red : wp.heat > 70 ? UI.yel : UI.c;
@@ -36,7 +37,7 @@ export function drawHud(game) {
   if (hot && blink) drawTextS('OVERHEAT', hg.bar + hg.barW / 2, hg.y, UI.w, 1, 0.5);
 
   // The level, and the power-ups in force with their time left.
-  drawTextS(`LEVEL ${level.n}`, v.x + 6, v.y + 6, UI.mid);
+  drawTextS(`LEVEL ${level.n}  RIFTS ${game.stats.sealed}/${game.total}`, v.x + 6, v.y + 6, UI.mid);
   let ey = v.y + 18;
   const chip = (kind, left, label) => {
     const col = POWERUPS[kind].color;

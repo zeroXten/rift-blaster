@@ -12,7 +12,7 @@ import { clamp } from './util.js';
 // time is how long a timed effect lasts; weight is how often it turns up.
 export const POWERUPS = {
   rapid:  { name: 'RAPID FIRE',    icon: 'pu_rapid',  color: '#ffd23f', time: 8, weight: 3 },
-  health: { name: 'REALITY PATCH', icon: 'pu_health', color: '#8be025', weight: 2 },
+  health: { name: 'HEALTH',        icon: 'pu_health', color: '#8be025', weight: 2 },
   nova:   { name: 'GRENADE',       icon: 'pu_nova',   color: '#ff3b3b', weight: 2 },
   stasis: { name: 'STASIS',        icon: 'pu_stasis', color: '#7fb4ff', time: 5, weight: 2 },
   charge: { name: 'RIFT CHARGE',   icon: 'pu_charge', color: '#39e6d0', weight: 1.5 },

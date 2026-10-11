@@ -6,6 +6,22 @@ import { R, disc, line, px, ring } from './render.js';
 import { pick, rand } from './util.js';
 
 const MAX_PARTS = 400;
+
+// A crack across the screen, as points in 0-1 screen space: in from an edge, wandering inward.
+function makeCrack() {
+  const side = (Math.random() * 4) | 0;
+  let x = side === 0 ? 0 : side === 1 ? 1 : Math.random(), y = side === 2 ? 0 : side === 3 ? 1 : Math.random();
+  let ang = Math.atan2(0.5 - y, 0.5 - x) + rand(-0.6, 0.6);
+  const points = [[x, y]];
+  for (let i = 4 + ((Math.random() * 4) | 0); i > 0; i--) {
+    ang += rand(-0.7, 0.7);
+    const len = rand(0.05, 0.13);
+    x += Math.cos(ang) * len;
+    y += Math.sin(ang) * len * 1.8;
+    points.push([x, y]);
+  }
+  return points;
+}
 const STEAM = ['#f4f4f4', '#9ccdc4', '#6aa6a6'];
 
 // Beam colours as [glow, body, core]. It turns orange when the scanner is close to overheating.
@@ -26,6 +42,7 @@ export class Fx {
     this.steam = false;   // set by the weapon while overheated
     this.rings = [];      // expanding shockwaves: { x, y, t, colors }
     this.sealing = 0;     // seal progress while the seal beam is on, set by the weapon
+    this.cracks = Array.from({ length: 10 }, makeCrack);
   }
 
   add(x, y, vx, vy, life, color, size = 1, grav = 0) {
@@ -175,6 +192,44 @@ export class Fx {
       }
     } else if (p < 0.35) {
       px(cx - 1, top - 1, 3, 3, core);
+    }
+  }
+
+  // Reality giving way, drawn over the whole picture. First cracks spread across the screen
+  // like glass; lower, slabs of the picture slip sideways; near collapse, bands of it flip to
+  // negative. Separately, low health pulses a red edge.
+  drawFracture(reality, health) {
+    const ctx = R.ctx, { x0, y0, w, h } = view, f = 1 - reality / 100, tick = (performance.now() / 130) | 0;
+    if (f > 0.12) {
+      const n = Math.min(this.cracks.length, Math.floor((f - 0.12) * 12) + 1);
+      for (let i = 0; i < n; i++) {
+        const c = this.cracks[i], color = (tick + i * 3) % 9 === 0 ? '#ffffff' : '#9ccdc4';
+        for (let j = 1; j < c.length; j++) {
+          line(x0 + c[j - 1][0] * w + 1, y0 + c[j - 1][1] * h + 1, x0 + c[j][0] * w + 1, y0 + c[j][1] * h + 1, UI.k);
+          line(x0 + c[j - 1][0] * w, y0 + c[j - 1][1] * h, x0 + c[j][0] * w, y0 + c[j][1] * h, color);
+        }
+      }
+    }
+    if (f > 0.3) {
+      for (let i = Math.floor((f - 0.3) * 9); i >= 0; i--) {
+        const n = (Math.imul(tick + 1, 2654435761) + Math.imul(i + 1, 40503)) >>> 0;
+        const sy = y0 + (n % (h - 16)), sh = 4 + ((n >> 8) % 10);
+        const dx = ((n >> 12) & 1 ? 1 : -1) * (3 + ((n >> 14) % Math.round(4 + f * 16)));
+        ctx.drawImage(R.canvas, x0, sy, w, sh, x0 + dx, sy, w, sh);
+      }
+    }
+    if (f > 0.65 && tick % 5 === 0) {
+      ctx.globalCompositeOperation = 'difference';
+      px(x0, y0 + ((tick * 53) % (h - 34)), w, 12 + ((tick * 7) % 20), '#ffffff');
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (health < 30 && ((performance.now() / 300) | 0) & 1) {
+      ctx.globalAlpha = 0.55;
+      px(x0, y0, w, 3, UI.red);
+      px(x0, y0 + h - 3, w, 3, UI.red);
+      px(x0, y0, 3, h, UI.red);
+      px(x0 + w - 3, y0, 3, h, UI.red);
+      ctx.globalAlpha = 1;
     }
   }
 }

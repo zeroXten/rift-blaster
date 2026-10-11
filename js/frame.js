@@ -28,8 +28,10 @@ function controls() {
 // Where the gauges sit in the top and bottom strips, shared with hud.js which fills them in.
 export function gauges() {
   const v = R.view;
+  const half = v.w >> 1;
   return {
-    reality: { x: v.x + 2, y: v.y - 11, bar: v.x + 46, barW: v.w - 138, right: v.x + v.w - 2 },
+    health: { x: v.x + 2, y: v.y - 11, bar: v.x + 40, barW: half - 46 },
+    reality: { x: v.x + half + 4, y: v.y - 11, bar: v.x + half + 48, barW: v.w - half - 50 },
     heat: { x: v.x + 2, y: v.y + v.h + 3, bar: v.x + 30, barW: v.w - 32 },
   };
 }
@@ -102,6 +104,8 @@ export function drawFrame({ live = false, pressed = false, sealing = false, hot 
   }
 
   // Gauge windows. hud.js draws the readings over these during play.
+  drawText('HEALTH', g.health.x, g.health.y, LIGHT);
+  box(g.health.bar, g.health.y - 1, g.health.barW, 9, UI.k, DARK);
   drawText('REALITY', g.reality.x, g.reality.y, LIGHT);
   box(g.reality.bar, g.reality.y - 1, g.reality.barW, 9, UI.k, DARK);
   drawText('HEAT', g.heat.x, g.heat.y, LIGHT);

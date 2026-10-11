@@ -7,6 +7,10 @@ comes out of a rift until it weakens, then hold SEAL on it to close it. Power-up
 are on buttons under your left thumb. Levels run straight into one another and keep getting
 harder.
 
+There are two ways to lose. **Health** is you: creatures that reach you take it. **Reality** is
+the room: every rift left open wears it down, the screen cracks and tears as it goes, and
+sealing rifts mends it.
+
 Plain HTML, CSS and JavaScript modules: no build step, no libraries, no backend, no asset files.
 Sprites, font, sound effects and music are all generated in code. See [SPEC.md](SPEC.md).
 
@@ -78,6 +82,8 @@ These can only be judged with the phone in your hand:
 
 - `FOV_LONG` in `js/config.js`: if rifts swim against the room as you turn, the value does
   not match your camera.
+- Reality: how fast open rifts and crowds wear it down is `STRAIN` and its neighbours in
+  `js/config.js`.
 - Difficulty: how each level gets harder than the last is `setLevel` at the bottom of
   `js/config.js`, and the easy / medium / hard picker is the table of multipliers above it
   (easy is meant for small children). What a level contains is `levelDef` in `js/levels.js`;

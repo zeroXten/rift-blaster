@@ -7,7 +7,7 @@ import { clamp, rand } from '../util.js';
 import { Creature } from './base.js';
 
 export class Zik extends Creature {
-  static def = { sprite: 'zik', size: 0.5, hp: 1, damage: 1, emerge: 0.5 };
+  static def = { sprite: 'zik', size: 0.5, hp: 1, damage: 2, emerge: 0.5 };
 
   constructor(game, rift, o) {
     super(game, rift, o);
@@ -22,7 +22,7 @@ export class Zik extends Creature {
   emerged() { scanner.say('zik'); }
 
   behave(dt) {
-    this.r -= this.speed * dt;
+    this.r -= this.speed * this.rush * dt;
     // It darts: a new sideways heading every fraction of a second.
     if ((this.turnT -= dt) <= 0) {
       this.turnT = rand(0.25, 0.6);

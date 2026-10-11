@@ -18,8 +18,10 @@ export const LINES = {
   streak: ['Good shooting.', 'Keep that up.'],
   miss: ['Missed.', 'Nothing there.'],
   overheat: ['Overheated. Cooling.', 'Too hot. Wait.'],
-  damage: ['You are hit.', 'One reached you.', 'Integrity dropping.'],
-  low: ['Integrity below thirty percent.'],
+  damage: ['You are hit.', 'One reached you.', 'That one got to you.'],
+  low: ['Your health is below thirty percent.'],
+  fracturing: ['Reality is fracturing. Close some rifts.', 'Too many rifts open. Reality is giving way.'],
+  collapsing: ['Reality is close to collapse. Seal something.'],
   recal: ['Recalibrated.'],
 
   glomm: ['Glomm on the rift. It is widening it.', 'A Glomm. Shoot it off. Two shots.'],
@@ -34,9 +36,9 @@ export const LINES = {
   drop: ['Power-up. Shoot it to collect it.'],
   got: ['Collected. Use it from the left side.', 'Collected.'],
   empty: ['None of those left.'],
-  full: ['Integrity is already full.'],
+  full: ['You are already at full health.'],
   rapid: ['Rapid fire. Hold FIRE.'],
-  health: ['Integrity restored.'],
+  health: ['Health restored.'],
   nova: ['Grenade away.'],
   stasis: ['Stasis field. They are held.'],
   charge: ['Rift charge armed. Shoot a rift.'],
@@ -49,7 +51,8 @@ export const LINES = {
   bossStun: ['It is stunned. Seal its rift now.'],
   bossRecover: ['It is back up.'],
 
-  gameover: ['Reality integrity lost.', 'That is the end of this run.', 'Integrity gone. I did warn you.'],
+  gameover: ['You are down.', 'That is the end of this run.', 'Too many got through to you.'],
+  collapsed: ['Reality has collapsed.', 'The room is gone. Too many rifts, open too long.'],
 };
 
 class Scanner {

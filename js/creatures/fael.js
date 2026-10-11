@@ -11,7 +11,7 @@ import { Creature } from './base.js';
 const CYCLE = 2.4, SOLID = 1.1;
 
 export class Fael extends Creature {
-  static def = { sprite: 'fael', size: 1.3, hp: 1, damage: 2, emerge: 1.0 };
+  static def = { sprite: 'fael', size: 1.3, hp: 1, damage: 4, emerge: 1.0 };
 
   constructor(game, rift, o) {
     super(game, rift, o);

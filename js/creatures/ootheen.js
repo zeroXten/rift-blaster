@@ -1,5 +1,5 @@
-// Ootheen (Miridian, amber): a single eye that hovers and glares. Keep the crosshair on it
-// for more than 0.8 seconds and it jumps somewhere else.
+// Ootheen (Miridian, amber): a single eye that circles the player at a distance, glaring.
+// Keep the crosshair on it for more than 0.8 seconds and it jumps somewhere else.
 
 import { PITCH_LIMIT, level } from '../config.js';
 import { DEG, wrapAngle } from '../projection.js';
@@ -12,7 +12,7 @@ import { Creature } from './base.js';
 const JUMP_AFTER = 0.8, GLARE_EVERY = 5.5, GLARE_CHARGE = 1.1;
 
 export class Ootheen extends Creature {
-  static def = { sprite: 'ootheen', size: 1.2, hp: 1, damage: 3, emerge: 1.0 };
+  static def = { sprite: 'ootheen', size: 1.2, hp: 1, damage: 4, emerge: 1.0 };
 
   constructor(game, rift, o) {
     super(game, rift, o);
@@ -21,6 +21,8 @@ export class Ootheen extends Creature {
     this.glareT = rand(3, 4.5);
     this.charging = false;
     this.blink = 0;
+    this.drift = (Math.random() < 0.5 ? -1 : 1) * rand(9, 15) * DEG;      // how fast it circles
+    this.turnT = rand(3, 6);
   }
 
   emerged() {
@@ -30,6 +32,9 @@ export class Ootheen extends Creature {
   }
 
   behave(dt) {
+    // Round and round, changing direction now and then.
+    this.baseYaw += this.drift * level.speed * dt;
+    if ((this.turnT -= dt) <= 0) { this.turnT = rand(3, 6); this.drift = -this.drift; }
     const ease = Math.min(1, dt * 3);
     this.r += (this.hoverR - this.r) * Math.min(1, dt * 1.5);
     this.yaw += wrapAngle(this.baseYaw - this.yaw) * ease;

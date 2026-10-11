@@ -1,15 +1,15 @@
 // Shared creature behaviour: squeezing out of a rift, being projected and drawn as a scaled
 // flat sprite, taking hits, dying. Each creature file overrides behave() and little else.
 
-import { REACH_DIST, RIFT_DIST } from '../config.js';
-import { dirFromBearing, onScreen, project, view } from '../projection.js';
+import { REACH_DIST, RIFT_DIST, level } from '../config.js';
+import { DEG, dirFromBearing, onScreen, project, view } from '../projection.js';
 import { blit } from '../render.js';
 import { DIMS, getSprite } from '../sprites.js';
 import { drawBulge } from '../rift.js';
 import { play } from '../audio/sfx.js';
 
 export class Creature {
-  // sprite, size (world units tall), hp, damage (integrity lost when it reaches the player), emerge (seconds)
+  // sprite, size (world units tall), hp, damage (health lost when it reaches the player), emerge (seconds)
   static def = { sprite: 'yrrk', size: 1, hp: 1, damage: 4, emerge: 1 };
 
   constructor(game, rift, o = {}) {
@@ -32,6 +32,10 @@ export class Creature {
     this.flash = 0;
     this.dieT = 0;
     this.dead = false;
+    this.side = 0;                              // sideways offset from dodging, easing toward sideTo
+    this.sideTo = 0;
+    this.aimT = 0;
+    this.dodgeT = 0;
 
     this.dir = [0, 0, 0];
     this.p = {};
@@ -87,11 +91,31 @@ export class Creature {
   emerged() {}
   behave() {}
 
+  // For creatures that dodge: if the crosshair has sat on it for a moment it may jink
+  // sideways, more readily on later levels. Returns its sideways offset, in radians.
+  dodge(dt) {
+    this.dodgeT -= dt;
+    if (this.game.weapon.target !== this) this.aimT = 0;
+    else if ((this.aimT += dt) > 0.22 && this.dodgeT <= 0) {
+      this.dodgeT = 1.6;
+      this.aimT = 0;
+      if (Math.random() < level.dodge) {
+        const d = (Math.random() < 0.5 ? -1 : 1) * (9 + Math.random() * 5) * DEG;
+        this.sideTo = Math.max(-0.6, Math.min(0.6, this.sideTo + d));
+      }
+    }
+    this.side += (this.sideTo - this.side) * Math.min(1, dt * 9);
+    return this.side;
+  }
+
+  // Creatures quicken over the last stretch, so one that gets close arrives in a rush.
+  get rush() { return this.r < 3.5 ? 1.6 : 1; }
+
   // Is the crosshair on this creature? tolPx is the weapon's tolerance in pixels. A creature
   // still squeezing through cannot be targeted: the rift swallows shots aimed into it.
   aimed(tolPx) {
     if (this.state !== 'active' || !this.p.front) return false;
-    return Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < Math.max(3, this.sprite.w * this.scale * 0.4) + tolPx;
+    return Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < Math.max(3, this.sprite.w * this.scale * 0.35) + tolPx;
   }
 
   hit() {

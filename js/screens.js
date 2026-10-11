@@ -98,7 +98,7 @@ const SCREENS = {
   gameover(c) {
     const v = R.view, mx = v.x + v.w / 2, o = c.over;
     backdrop(c, 0.55, 0.7);
-    heading('REALITY COMPROMISED', mx, v.y + 14, UI.red, 2);
+    heading(o.cause === 'reality' ? 'REALITY COLLAPSED' : 'YOU ARE DOWN', mx, v.y + 14, UI.red, 2);
     drawText(`"${o.comment}"`, mx, v.y + 40, UI.c, 1, 0.5);
     let y = v.y + 62;
     const row = (k, val, col = UI.w) => { drawText(k, mx - 90, y, UI.mid); drawText(val, mx + 90, y, col, 1, 1); y += 12; };
