@@ -2,6 +2,7 @@
 
 import { BEAM_TOL, HEAT_DECAY, HEAT_PER_SHOT, OVERHEAT_LOCK, SEAL_ANGLE, SEAL_TIME, level } from './config.js';
 import { DEG, angleTo, view } from './projection.js';
+import { DIMS } from './sprites.js';
 import { play, sealTone } from './audio/sfx.js';
 import { scanner } from './scanner.js';
 import { vibrate } from './util.js';
@@ -16,6 +17,7 @@ export class Weapon {
     this.heat = 0;
     this.lock = 0;          // seconds of overheat lockout left
     this.kick = 0;
+    this.swallowed = 0;     // seconds left of the "no effect" notice after firing into a rift
     this.target = null;     // creature under the crosshair
     this.rift = null;       // rift under the crosshair
     this.seal = 0;          // 0 to 1
@@ -34,6 +36,7 @@ export class Weapon {
   update(dt, game) {
     this.tolPx = view.f * Math.tan(this.tol);
     this.kick -= dt;
+    this.swallowed -= dt;
     if (this.lock > 0) {
       this.lock -= dt;
       this.heat = Math.max(0, (100 * this.lock) / OVERHEAT_LOCK);
@@ -70,20 +73,30 @@ export class Weapon {
 
   fire(game) {
     if (this.lock > 0) { play('denied'); return; }
-    game.stats.shots++;
     this.heat += HEAT_PER_SHOT * level.heat;
     this.kick = 0.08;
     play('shot');
     const c = this.pick(game);
-    game.fx.shot(!!c, this.heat);
-    if (c) {
-      game.stats.hits++;
-      game.misses = 0;
-      c.hit();
-      vibrate(15);
-    } else if (++game.misses >= 4) {
-      game.misses = 0;
-      scanner.say('miss');
+    // Not on a creature that is out in the open, but on a rift: its energy swallows the shot.
+    // That costs heat and does nothing, to the rift or to whatever is still inside it.
+    const rift = c ? null : game.rifts.find(r => r.covers(this.tolPx));
+    game.fx.shot(c ? 'hit' : rift ? 'absorb' : 'miss', this.heat, rift && DIMS[rift.dim].ramp);
+    if (rift) {
+      rift.absorb();
+      this.swallowed = 0.7;
+      scanner.say('absorbed');
+      game.emit('absorbed');
+    } else {
+      game.stats.shots++;
+      if (c) {
+        game.stats.hits++;
+        game.misses = 0;
+        c.hit();
+        vibrate(15);
+      } else if (++game.misses >= 4) {
+        game.misses = 0;
+        scanner.say('miss');
+      }
     }
     if (this.heat >= 100) {
       this.heat = 100;

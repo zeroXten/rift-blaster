@@ -38,20 +38,21 @@ export class Fx {
   }
 
   // Pixels pulled into a point: a rift sealing.
-  implode(x, y, colors, radius) {
-    for (let i = 0; i < 30; i++) {
+  implode(x, y, colors, radius, n = 30) {
+    for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283, r = radius * rand(0.6, 1.3), life = rand(0.3, 0.5);
       const c = Math.cos(a), s = Math.sin(a);
       this.add(x + c * r, y + s * r, (-c * r) / life, (-s * r) / life, life, pick(colors), 2);
     }
-    this.white = 0.12;
+    if (n >= 30) this.white = 0.12;
   }
 
+  // end is 'hit', 'miss' or 'absorb' (swallowed by a rift, whose colours are passed as tint).
   // heat is the scanner's heat (0-100) as the shot leaves.
-  shot(hit, heat = 0) {
+  shot(end, heat = 0, tint = null) {
     const pal = heat > 80 ? BEAM_HOT : BEAM_COOL;
-    this.bolt = { t: 0, hit, pal };
-    if (hit) this.burst(view.cx, view.cy, [pal[2], pal[1], pal[1]], 10, 80);
+    this.bolt = { t: 0, end, pal, tint };
+    if (end === 'hit') this.burst(view.cx, view.cy, [pal[2], pal[1], pal[1]], 10, 80);
   }
 
   // An Ootheen's glare landing.
@@ -106,7 +107,8 @@ export class Fx {
   // One straight beam from the bottom of the screen to the crosshair: wide where it leaves the
   // scanner and narrow where it lands, for depth, with a glow around a white core. It opens with
   // a fat flash, bright slugs race up it, and it thins away to nothing. A hit ends in a small
-  // star and an expanding ring.
+  // star and an expanding ring. Fired into a rift, the beam frays and takes on the rift's colour
+  // toward the far end, and a ring closes in on the point where it is swallowed.
   drawBeam(beam, by) {
     const ctx = R.ctx, [glow, body, core] = beam.pal, p = beam.t / BEAM_TIME;
     const cx = Math.round(view.cx), top = Math.round(view.cy), len = by - top;
@@ -116,9 +118,15 @@ export class Fx {
       ctx.fillStyle = color;
       ctx.fillRect(cx - (w >> 1), y, w, 1);
     };
+    const eaten = beam.end === 'absorb', tick = (beam.t * 60) | 0;
     for (let y = by - 1; y >= top; y--) {
-      const d = by - y, hw = (7 * (1 - d / len) + 1.2) * k;
+      const d = by - y, u = d / len, hw = (7 * (1 - u) + 1.2) * k;
       const slug = (((d - beam.t * 900) % 18) + 18) % 18 < 5;
+      if (eaten && u > 0.55) {
+        // The far end breaks into flickering dashes in the rift's colour.
+        if ((d + tick * 3) % 6 < 3) span(hw, y, beam.tint[u > 0.8 ? 1 : 2]);
+        continue;
+      }
       if (p < 0.7) span(hw + 1.5, y, glow);
       span(hw, y, p < 0.2 ? core : body);
       span(hw * (slug ? 0.8 : 0.4), y, core);
@@ -129,7 +137,10 @@ export class Fx {
       disc(cx, by, Math.round(5 * k), core);
     }
 
-    if (beam.hit) {
+    if (eaten) {
+      ring(cx, top, 15 * (1 - p) + 2, 0, 6.3, beam.tint[p < 0.5 ? 3 : 2]);
+      ring(cx, top, 9 * (1 - p) + 1, 0, 6.3, beam.tint[1]);
+    } else if (beam.end === 'hit') {
       ring(cx, top, 3 + p * 10, 0, 6.3, p < 0.5 ? core : body);
       if (p < 0.35) {
         const r = 7 - p * 8;

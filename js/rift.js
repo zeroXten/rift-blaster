@@ -152,6 +152,7 @@ export class Rift {
 
     this.sealed = false;
     this.sealAnim = 0;
+    this.flare = 0;
     this.p = {};
     this.hw = 3;
     this.hh = 20;
@@ -166,6 +167,7 @@ export class Rift {
 
   update(dt) {
     this.t += dt;
+    if (this.flare > 0) this.flare -= dt;
     const p = project(this.dir, this.p);
     const s = (view.f / RIFT_DIST) * this.size, st = this.stage;
     this.hh = (0.7 + 1.1 * this.width) * s;
@@ -219,9 +221,16 @@ export class Rift {
     play('emerge_' + this.dim, this.p.pan);
   }
 
-  // Knocking an emerging creature back narrows the rift.
-  narrow(amount = 0.07) {
-    this.width = Math.max(0.12, this.width - amount);
+  // Is the crosshair on the rift's opening? Anything fired into it is swallowed.
+  covers(tolPx) {
+    return !this.sealed && this.on && Math.abs(this.p.x - view.cx) < this.hw + 3 + tolPx * 0.5 && Math.abs(this.p.y - view.cy) < this.hh;
+  }
+
+  // A shot fired into the rift: it flares and nothing else happens.
+  absorb() {
+    this.flare = 0.22;
+    play('absorb', this.p.pan);
+    this.game.fx.implode(this.p.x, this.p.y, DIMS[this.dim].ramp.slice(1), this.hw + 14, 12);
   }
 
   seal() {
@@ -238,8 +247,10 @@ export class Rift {
     // Opens with a quick stretch; implodes when sealed.
     const k = this.sealed ? (1 - this.sealAnim / 0.45) ** 2 : Math.min(1, this.t * 3);
     const ramp = DIMS[this.dim].ramp;
+    // Flares a shade brighter for a moment after swallowing a shot.
+    const lit = this.flare > 0 ? [ramp[1], ramp[2], ramp[3], '#ffffff'] : ramp;
     drawRiftShape(this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
-      this.sealed ? SEAL_RAMP : ramp, this.shape, k, this.size > 1);
+      this.sealed ? SEAL_RAMP : lit, this.shape, k, this.size > 1);
     // Strength gauge: how hard the other side is still holding the rift open. It drains as the
     // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.
     if (!this.sealed && this.lockKills) {

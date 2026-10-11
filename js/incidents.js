@@ -25,7 +25,7 @@ export const INCIDENTS = [
     briefing: [
       'Incident one. A rift has opened in your immediate vicinity. This is normal now.',
       'Things called Yrrks will come through it. Small. Numerous. Catalogue entry: avoid.',
-      'Follow the arrow to the rift. Fire with your right thumb. The rift is held open by what is pushing from the other side. Shoot them as they come out and it weakens. When the bar under it is empty, hold the crosshair on the rift and I will seal it.',
+      'Follow the arrow to the rift. Fire with your right thumb. The rift is held open from the other side, and it swallows shots. Wait until they are out, then shoot them. Each one weakens it. When the bar under it is empty, hold the crosshair on the rift and I will seal it.',
     ],
     rifts: [
       { at: 0.5, dim: 'vesh', yaw: 55, pitch: 2, maxWidth: 0.6, lockKills: 6, pack: [3, 3], waitSeen: true },
@@ -38,6 +38,7 @@ export const INCIDENTS = [
       firstKill: 'Good. It felt that. Keep going.',
       unlocked: 'It is weak enough. Hold the crosshair on the rift to seal it.',
       blocked: "Can't seal while something is halfway through. Let it out first.",
+      absorbed: 'The rift swallows anything fired into it. Wait until they are fully out, then shoot.',
     },
   },
   {

@@ -315,7 +315,8 @@ function paint(rows, colorOf) {
   return c;
 }
 
-// Returns { w, h, frames, flash }: flash holds a white silhouette of each frame, for hit flashes.
+// Returns { w, h, frames, flash, shade }: flash holds a white silhouette of each frame, for hit
+// flashes; shade is a dim one in the dimension's colour, for a creature not yet out of its rift.
 export function getSprite(name, dim) {
   const key = name + '/' + dim;
   let s = cache.get(key);
@@ -332,6 +333,7 @@ export function getSprite(name, dim) {
     h: grids[0].length,
     frames: grids.map(g => paint(g, colour)),
     flash: grids.map(g => paint(g, ch => (ch === '.' ? null : '#ffffff'))),
+    shade: grids.map(g => paint(g, ch => (ch === '.' ? null : ch === 'k' || ch === 'o' ? PAL.k : ramp[1]))),
   };
   cache.set(key, s);
   return s;

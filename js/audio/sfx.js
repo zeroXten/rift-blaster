@@ -111,6 +111,11 @@ const SOUNDS = {
     for (let i = 0; i < 3; i++) tone({ f: i % 2 ? 660 : 880, dur: 0.12, delay: i * 0.13, type: 'square', vol: 0.14 });
     noise({ dur: 1.4, vol: 0.14, f: 3000, delay: 0.1 });
   },
+  // A shot swallowed by a rift: a dull gulp, nothing like a hit.
+  absorb() {
+    tone({ f: 240, f2: 60, dur: 0.28, vol: 0.22, mod: { ratio: 0.5, index: 3, index2: 0.5 } });
+    noise({ dur: 0.18, vol: 0.12, filter: 'lowpass', f: 900, f2: 150 });
+  },
   armour() { tone({ f: 1900, dur: 0.1, vol: 0.14, mod: { ratio: 1.41, index: 3, index2: 0.5 } }); },
 
   // One death per creature

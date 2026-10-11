@@ -11,6 +11,7 @@ export const LINES = {
   sealed: ['Sealed. Adequate.', 'Rift closed. One fewer.', 'Sealed. I did most of that.', 'Closed. Reality thanks you. I do not.'],
   locked: ['Too strong to seal. It is held open from the other side. Shoot what comes out.', 'Not yet. Every one you shoot weakens it.', 'It will not close while they are this strong. Shoot.'],
   weak: ['That rift is weakening. Seal it.', 'It is weak enough now. Hold the crosshair on it.', 'They are losing their grip. Seal it.'],
+  absorbed: ['The rift swallowed that. Wait until they are out.', 'Shooting into a rift does nothing. Shoot what comes out of it.', 'Not out yet. The rift is eating your shots.'],
   blocked: ["Can't seal. Something's in the doorway.", 'Something is halfway through. Let it out, then seal.'],
 
   streak: ['Acceptable shooting.', 'You hit several things. Noted.', 'Keep doing that.'],

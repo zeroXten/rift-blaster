@@ -60,7 +60,8 @@ export class Creature {
     if (this.state === 'emerge') {
       this.rift.emerging++;
       this.e += dt / this.def.emerge;
-      if (this.e >= 1) { this.state = 'active'; this.emerged(); }
+      // Out: it pops into full colour with a flash, and can now be shot.
+      if (this.e >= 1) { this.state = 'active'; this.flash = 0.1; this.emerged(); }
     } else if (this.state === 'active') {
       this.behave(dt);
     } else if (this.state === 'dying') {
@@ -79,22 +80,15 @@ export class Creature {
   emerged() {}
   behave() {}
 
-  // Is the crosshair on this creature? tolPx is the weapon's tolerance in pixels.
+  // Is the crosshair on this creature? tolPx is the weapon's tolerance in pixels. A creature
+  // still squeezing through cannot be targeted: the rift swallows shots aimed into it.
   aimed(tolPx) {
-    if (this.state === 'dying' || !this.p.front) return false;
-    const rad = this.state === 'emerge' ? this.rift.hw + 3 : Math.max(3, this.sprite.w * this.scale * 0.4);
-    return Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < rad + tolPx;
+    if (this.state !== 'active' || !this.p.front) return false;
+    return Math.hypot(this.p.x - view.cx, this.p.y - view.cy) < Math.max(3, this.sprite.w * this.scale * 0.4) + tolPx;
   }
 
   hit() {
     this.flash = 0.12;
-    if (this.state === 'emerge') {
-      // Not out yet, so it cannot be killed: it is knocked back through and the rift narrows.
-      this.rift.narrow();
-      this.e = 0;
-      play('hit', this.p.pan);
-      return;
-    }
     if (--this.hp <= 0) this.die(true);
     else play('hit', this.p.pan);
   }
@@ -139,7 +133,8 @@ export class Creature {
       sx *= 1 + b;
       sy *= 1 - b;
     }
-    const frames = this.flash > 0 ? this.sprite.flash : this.sprite.frames;
+    // Still inside the rift it is only a shadow in the rift's colour.
+    const frames = this.state === 'emerge' ? this.sprite.shade : this.flash > 0 ? this.sprite.flash : this.sprite.frames;
     blit(frames[this.frame() % frames.length], p.x, p.y, sx, sy);
   }
 }

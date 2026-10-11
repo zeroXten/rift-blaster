@@ -39,6 +39,8 @@ export function drawHud(game) {
   }
   px(cx, cy, 1, 1, cc);
 
+  if (wp.swallowed > 0) drawTextS('NO EFFECT', cx, cy - 30, UI.mid, 1, 0.5);
+
   // Seal ring: fills over the seal time; red while something is in the way.
   const rift = wp.rift;
   if (rift && !rift.sealed) {
