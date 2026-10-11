@@ -3,17 +3,19 @@
 //
 // Rift fields: at (seconds into the incident; rifts sharing a time open together), dim, yaw / pitch in degrees relative to where the
 // player faces at the start (omit for a random bearing), width (starting width 0-1), growth
-// (multiplier on widening), maxWidth, lockKills (creatures to shoot before it can be sealed),
-// pack ([min, max] override), size, boss, quiet.
+// (multiplier on widening), maxWidth, lockKills (creatures to shoot before it can be sealed;
+// defaults to the dimension's hold), pack ([min, max] override), size, boss, quiet, waitSeen
+// (stays a crack until the player has looked at it).
 //
 // hints: scanner lines forced on the first occurrence of a game event.
 
 export const DIM_SPAWN = {
   // interval / pack / max are [tear, breach]. max caps creatures alive from one rift.
-  vesh:     { type: 'yrrk',    interval: [9, 6],  pack: [[3, 4], [4, 5]], max: [10, 14] },
-  ulta:     { type: 'glomm',   interval: [5, 3],  pack: [[1, 1], [1, 1]], max: [1, 2] },
-  hollow:   { type: 'skaith',  interval: [11, 7], pack: [[1, 1], [1, 1]], max: [2, 3] },
-  miridian: { type: 'ootheen', interval: [9, 6],  pack: [[1, 1], [1, 1]], max: [2, 3] },
+  // hold is how many of its creatures must be shot before a rift of that dimension will seal.
+  vesh:     { type: 'yrrk',    interval: [7, 5.5], pack: [[3, 3], [3, 4]], max: [8, 10],  hold: 5 },
+  ulta:     { type: 'glomm',   interval: [4, 4],   pack: [[1, 1], [1, 1]], max: [1, 2],   hold: 2 },
+  hollow:   { type: 'skaith',  interval: [7, 5],   pack: [[1, 1], [1, 1]], max: [2, 3],   hold: 2 },
+  miridian: { type: 'ootheen', interval: [5, 4],   pack: [[1, 1], [1, 1]], max: [1, 2],   hold: 2 },
 };
 
 export const INCIDENTS = [
@@ -23,17 +25,16 @@ export const INCIDENTS = [
     briefing: [
       'Incident one. A rift has opened in your immediate vicinity. This is normal now.',
       'Things called Yrrks will come through it. Small. Numerous. Catalogue entry: avoid.',
-      'Follow the arrow to the rift. Tap to shoot. I need six samples. Then hold the crosshair on the rift for two seconds and I will seal it.',
+      'Follow the arrow to the rift. Fire with your right thumb. I need six samples. Then hold the crosshair on the rift for two seconds and I will seal it.',
     ],
-    damageScale: 0.5,
     rifts: [
-      { at: 0.5, dim: 'vesh', yaw: 55, pitch: 2, width: 0.12, growth: 0.8, maxWidth: 0.6, lockKills: 6, pack: [3, 3] },
+      { at: 0.5, dim: 'vesh', yaw: 55, pitch: 2, maxWidth: 0.6, lockKills: 6, pack: [3, 3], waitSeen: true },
     ],
     hints: {
       start: 'Rift detected. Follow the arrow.',
       riftSeen: 'That crack is a rift. I need six samples before I can seal it.',
       locked: 'Not yet. Six samples first. Shoot what comes out.',
-      tear: "It's tearing. Things will come through. Tap to shoot them.",
+      tear: "It's tearing. Here they come. Shoot them.",
       firstKill: 'Good. Five more.',
       unlocked: 'Samples logged. Hold the crosshair on the rift to seal it.',
       blocked: "Can't seal while something is coming through. Shoot it.",
@@ -43,17 +44,17 @@ export const INCIDENTS = [
     name: 'Widening',
     creature: 'glomm',
     briefing: [
-      'Several rifts this time. An ignored rift widens: crack, tear, breach. Seal them while they are cracks.',
+      'Several rifts this time. Each is held open from the other side. Shoot enough of what comes through, then hold the crosshair on it to seal it. The pips under a rift count what is left.',
       'Violet rifts lead to Ulta-9. Glomms live there. A Glomm grips the edge of its rift and pulls it wider.',
-      'Shoot it off. Two shots. Shooting anything while it is still squeezing through knocks it back and narrows the rift.',
+      'Shoot it off. Two shots. A rift left alone widens: crack, tear, breach. Wider means more of them, faster.',
     ],
     maxOpen: 3,
     rifts: [
       { at: 1, dim: 'vesh', yaw: -45 },
-      { at: 8, dim: 'ulta' },
-      { at: 28, dim: 'vesh' },
-      { at: 28, dim: 'ulta' },
-      { at: 50, dim: 'vesh' },
+      { at: 12, dim: 'ulta' },
+      { at: 30, dim: 'vesh' },
+      { at: 30, dim: 'ulta' },
+      { at: 52, dim: 'vesh' },
       { at: 62, dim: 'ulta' },
     ],
   },
@@ -68,12 +69,12 @@ export const INCIDENTS = [
     maxOpen: 3,
     rifts: [
       { at: 1, dim: 'hollow', yaw: 30 },
-      { at: 8, dim: 'vesh' },
-      { at: 26, dim: 'hollow' },
-      { at: 26, dim: 'ulta' },
-      { at: 46, dim: 'hollow' },
-      { at: 66, dim: 'vesh' },
-      { at: 66, dim: 'hollow' },
+      { at: 5, dim: 'vesh' },
+      { at: 22, dim: 'hollow' },
+      { at: 22, dim: 'ulta' },
+      { at: 40, dim: 'hollow' },
+      { at: 54, dim: 'vesh' },
+      { at: 54, dim: 'hollow' },
     ],
   },
   {
@@ -87,13 +88,13 @@ export const INCIDENTS = [
     maxOpen: 3,
     rifts: [
       { at: 1, dim: 'miridian', yaw: -30 },
-      { at: 7, dim: 'vesh' },
-      { at: 24, dim: 'hollow' },
-      { at: 24, dim: 'miridian' },
-      { at: 44, dim: 'ulta' },
-      { at: 60, dim: 'miridian' },
-      { at: 60, dim: 'hollow' },
-      { at: 80, dim: 'vesh' },
+      { at: 5, dim: 'vesh' },
+      { at: 20, dim: 'hollow' },
+      { at: 20, dim: 'miridian' },
+      { at: 38, dim: 'ulta' },
+      { at: 52, dim: 'miridian' },
+      { at: 52, dim: 'hollow' },
+      { at: 66, dim: 'vesh' },
     ],
   },
   {

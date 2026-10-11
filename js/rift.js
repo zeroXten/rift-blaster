@@ -12,6 +12,7 @@ import { scanner } from './scanner.js';
 const VOID = '#05050a';
 const SEAL_RAMP = ['#6aa6a6', '#9ccdc4', '#f4f4f4', '#ffffff'];
 const KNOTS = 7, MID = KNOTS >> 1;
+const CRACK_RUSH = 4;      // how much faster a rift widens while it is still a crack
 
 // The outline of one rift: a zig-zag spine with an uneven opening on either side of it, so it
 // reads as a fracture in the air (cracked glass, a lightning bolt) and never as a smooth oval.
@@ -127,7 +128,8 @@ export class Rift {
     this.maxWidth = def.maxWidth ?? 1;
     this.rate = (def.growth ?? 1) / RIFT_FULL_TIME;
     this.size = def.size ?? 1;
-    this.lockKills = def.lockKills || 0;
+    // A rift is held open from the other side: this many of its creatures must be shot before it will seal.
+    this.lockKills = def.lockKills ?? DIM_SPAWN[def.dim]?.hold ?? 0;
     this.bossLock = !!def.boss;
     this.kills = 0;
 
@@ -135,7 +137,8 @@ export class Rift {
     this.seed = Math.random() * 6.28;
     this.t = 0;
     this.stageSeen = 0;
-    this.spawnT = 0.8;
+    this.spawnT = 0.4;
+    this.seen = !def.waitSeen;
     this.queue = 0;
     this.queueType = null;
     this.stagger = 0;
@@ -168,8 +171,11 @@ export class Rift {
     this.on = onScreen(p, this.hw, this.hh);
     if (this.sealed) { this.sealAnim += dt; return; }
 
-    // A clinging Glomm triples the rate, two of them make it five times.
-    this.width = Math.min(this.maxWidth, this.width + this.rate * (1 + 2 * this.pull) * dt);
+    // A tutorial rift can wait as a crack until the player has found it.
+    if (!this.seen) { this.seen = this.on; return; }
+    // A crack lasts only a few seconds: it is a warning, not a stage to wait in. After that a
+    // clinging Glomm makes the rift widen 2.5 times as fast, and two of them 4 times.
+    this.width = Math.min(this.maxWidth, this.width + this.rate * (st === 0 ? CRACK_RUSH : 1) * (1 + 1.5 * this.pull) * dt);
     if (st > this.stageSeen) {
       this.stageSeen = st;
       const name = st === 1 ? 'tear' : 'breach';
@@ -224,7 +230,16 @@ export class Rift {
     if (!this.on || this.sealAnim > 0.45) return;
     // Opens with a quick stretch; implodes when sealed.
     const k = this.sealed ? (1 - this.sealAnim / 0.45) ** 2 : Math.min(1, this.t * 3);
+    const ramp = DIMS[this.dim].ramp;
     drawRiftShape(this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
-      this.sealed ? SEAL_RAMP : DIMS[this.dim].ramp, this.shape, k, this.size > 1);
+      this.sealed ? SEAL_RAMP : ramp, this.shape, k, this.size > 1);
+    // One pip per creature still to shoot before this rift will seal.
+    if (!this.sealed && this.lockKills) {
+      const n = this.lockKills, x0 = Math.round(this.p.x - (n * 5 - 1) / 2), y = Math.round(this.p.y + this.hh + 5);
+      for (let i = 0; i < n; i++) {
+        px(x0 + i * 5 - 1, y - 1, 5, 5, VOID);
+        px(x0 + i * 5, y, 3, 3, i < this.kills ? ramp[3] : ramp[0]);
+      }
+    }
   }
 }

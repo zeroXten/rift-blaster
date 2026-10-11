@@ -3,7 +3,7 @@
 //                                          `-> gameover
 
 import { FOV_LONG, UI } from './config.js';
-import { R, initRender } from './render.js';
+import { R, initRender, px } from './render.js';
 import { DEG, qAxis, setView, view } from './projection.js';
 import {
   debugAim, debugLook, orient, recalibrate, requestMotionPermission, startDebug, startSensor,
@@ -16,8 +16,9 @@ import { GRADES, LINES, scanner } from './scanner.js';
 import { INCIDENTS } from './incidents.js';
 import { Game } from './game.js';
 import { frameHit } from './frame.js';
+import { enterFullscreen, exitFullscreen, fullscreen } from './fullscreen.js';
 import { drawScreen } from './screens.js';
-import { drawTextS } from './font.js';
+import { drawText, drawTextS, wrapText } from './font.js';
 import { loadStore, recordScore, saveStore } from './storage.js';
 import { pick } from './util.js';
 
@@ -42,6 +43,8 @@ let game = null;
 let drag = null;
 let last = performance.now();
 let fps = 60;
+let autoFull = true;      // go full screen when an incident starts, until the player leaves it
+let toast = null;
 
 function newRun() {
   const start = Math.min(INCIDENTS.length, Math.max(1, parseInt(params.get('incident'), 10) || 1)) - 1;
@@ -79,7 +82,9 @@ async function start() {
     if (motion === 'granted') startSensor();
     let camError = null;
     try { await startCamera(); } catch (e) { camError = e; }
-    const moving = motion === 'granted' && await waitForData(1500);
+    // The first reading can take a few seconds to arrive, most of all straight after the
+    // camera has started, so be patient before deciding there is no sensor.
+    const moving = motion === 'granted' && await waitForData(4000);
     if (!moving || camError) {
       ui.help = {
         ios: IOS,
@@ -107,12 +112,22 @@ function startIncident() {
   setState('play');
 }
 
-// Where the browser allows it (Android), fill the screen and hold it in landscape, which also
-// works for a phone with rotation locked. Needs a tap. iPhones have no such API.
+// On a phone, starting an incident fills the screen and holds it in landscape where the browser
+// allows it. Once the player has left full screen themselves, it stays their choice.
 function goLandscape() {
-  if (!coarse.matches) return;
-  const el = document.documentElement;
-  Promise.resolve(el.requestFullscreen?.()).then(() => screen.orientation?.lock?.('landscape')).catch(() => {});
+  if (coarse.matches && autoFull) enterFullscreen(true);
+}
+
+// The full-screen key on the casing, or F.
+function toggleFullscreen() {
+  if (fullscreen.on) { autoFull = false; exitFullscreen(); }
+  else if (fullscreen.supported) { autoFull = true; enterFullscreen(coarse.matches); }
+  else if (fullscreen.standalone) say('Already full screen.');
+  else say(IOS ? 'iPhone: tap Share, then Add to Home Screen. Opened from there, it runs full screen.' : 'This browser has no full screen mode.');
+}
+
+function say(text) {
+  toast = { text, ttl: 5 };
 }
 
 function keepAwake() {
@@ -205,6 +220,7 @@ const inside = (b, p) => p.x >= b.x && p.x < b.x + b.w && p.y >= b.y && p.y < b.
 canvas.addEventListener('pointerdown', e => {
   if (ui.state !== 'play') return;
   const hit = frameHit(toCanvas(e));
+  if (hit === 'full') return;      // handled on click, below
   if (hit === 'fire') game.fire();
   else if (hit === 'pause') { play('ui'); pause(); }
   else if (hit === 'recal') { play('ui'); doRecalibrate(); }
@@ -233,8 +249,10 @@ window.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag
 
 // Menus use click, which is the event iOS accepts as a user gesture for permissions and audio.
 canvas.addEventListener('click', e => {
+  const p = toCanvas(e);
+  if (frameHit(p) === 'full') { play('ui'); toggleFullscreen(); return; }
   if (ui.state === 'play' || performance.now() - ui.since < 300) return;
-  const p = toCanvas(e), b = ui.buttons.find(b => inside(b, p));
+  const b = ui.buttons.find(b => inside(b, p));
   if (b) { play('ui'); act(b.id); }
   else if (ui.state === 'briefing') ui.t += 100;
 });
@@ -244,6 +262,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Space' && ui.state === 'play') { game.fire(); e.preventDefault(); }
   else if (e.code === 'KeyP' || e.code === 'Escape') ui.state === 'paused' ? setState('play') : pause();
   else if (e.code === 'KeyR' && ui.state === 'play') doRecalibrate();
+  else if (e.code === 'KeyF') toggleFullscreen();
   else if (e.code === 'Enter' && ui.state !== 'play') {
     const b = ui.buttons.find(b => b.primary);
     if (b) act(b.id);
@@ -261,7 +280,10 @@ document.addEventListener('visibilitychange', () => {
 // Landscape only: a CSS overlay covers the game in portrait, so stop the clock too. Tapping
 // the overlay turns the screen for the player where the browser can.
 matchMedia('(orientation: portrait)').addEventListener?.('change', e => { if (e.matches && coarse.matches) pause(); });
-document.getElementById('rotate').addEventListener('click', goLandscape);
+document.getElementById('rotate').addEventListener('click', () => enterFullscreen(true));
+for (const type of ['fullscreenchange', 'webkitfullscreenchange']) {
+  document.addEventListener(type, () => { if (!fullscreen.on) autoFull = false; });
+}
 
 // --- Frame loop ------------------------------------------------------------------------------
 
@@ -271,6 +293,12 @@ function tick(dt) {
   // Before the sensors are running, the title drifts slowly on its own.
   setView(orient.mode === 'none' ? qAxis(0, 1, 0, performance.now() * -0.00004) : orient.q, R.view, FOV_LONG);
   scanner.update(dt);
+
+  // If the sensor was only slow to answer, carry on from the help screen without being asked.
+  if (ui.state === 'help' && ui.help.motion === 'missing' && orient.mode === 'sensor' && orient.hasData) {
+    if (ui.help.camera) ui.help.motion = null;
+    else begin();
+  }
 
   if (ui.state === 'play') {
     ui.buttons = [];
@@ -285,6 +313,13 @@ function tick(dt) {
     if (ui.state === 'paused') game.draw();
     ui.buttons = drawScreen(ui.state, { t: ui.t, run, store, help: ui.help, report: ui.report, starting: ui.starting, debug: DEBUG });
   }
+
+  // A short notice along the bottom of the screen, on whatever is showing.
+  if (toast && (toast.ttl -= dt) > 0) {
+    const v = R.view, lines = wrapText(toast.text, ((v.w - 24) / 6) | 0), y = v.y + v.h - 6 - lines.length * 9;
+    px(v.x + 6, y - 3, v.w - 12, lines.length * 9 + 4, UI.k);
+    lines.forEach((l, i) => drawText(l, view.cx, y + i * 9, UI.yel, 1, 0.5));
+  }
 }
 
 function frame(now) {
@@ -295,12 +330,13 @@ function frame(now) {
   tick(dt);
 }
 
-// Console handle for development: riftDebug.look(90, 0), riftDebug.step(5), riftDebug.game.
+// Console handle for development: riftDebug.start(3), riftDebug.look(90, 0), riftDebug.step(5), riftDebug.game.
 if (DEBUG) {
   window.riftDebug = {
     get game() { return game; },
     get state() { return ui.state; },
     look: debugAim,
+    start(incident = 1) { startDebug(); params.set('incident', incident); begin(); startIncident(); },
     step(seconds = 1) { for (let t = 0; t < seconds; t += 1 / 60) tick(1 / 60); },
   };
 }

@@ -52,7 +52,10 @@ export class Weapon {
     }
     if (near && near === this.rift) {
       this.grace = 0.15;
-      if (near.blocked) game.emit(near.locked ? 'locked' : 'blocked');
+      if (near.blocked) {
+        game.emit(near.locked ? 'locked' : 'blocked');
+        if (near.locked && !near.bossLock) scanner.say('locked');
+      }
       else {
         this.seal += dt / this.sealTime;
         if (this.seal >= 1) { near.seal(); this.rift = null; this.seal = 0; }

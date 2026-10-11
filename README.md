@@ -15,6 +15,9 @@ from the `main` branch root) on iPhone Safari or Android Chrome. It plays in lan
 an iPhone, rotation lock has to be off; on Android, starting an incident goes full screen and
 turns the screen for you.
 
+The third key on the left of the casing switches full screen on and off. iPhones do not let a
+web page go full screen: use Share → Add to Home Screen and open the game from that icon.
+
 ## Develop
 
 ES modules need a web server; any static one will do:
@@ -32,6 +35,7 @@ the webcam standing in for the rear camera. If the webcam is refused or missing,
 | Drag, arrow keys or WASD | Look |
 | Click the screen or the FIRE button, or Space | Fire |
 | P / Esc | Pause |
+| F, or the key on the left of the casing | Full screen, in and out |
 | R | Recalibrate |
 | 1–5 on the title screen, or `?incident=N` | Start at that incident |
 

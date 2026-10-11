@@ -119,7 +119,7 @@ export class Game {
     const open = this.rifts.reduce((n, r) => n + !r.sealed, 0);
     this.quiet = open ? 0 : this.quiet + dt;
     const next = this.pending[0];
-    if (next && !this.ending && open < (this.incident.maxOpen || 3) && (this.t >= next.at || this.quiet > 4)) {
+    if (next && !this.ending && open < (this.incident.maxOpen || 3) && (this.t >= next.at || this.quiet > 1.5)) {
       // Rifts scheduled for the same moment open together, so they cannot all be caught as cracks.
       while (this.pending[0]?.at === next.at) this.openRift(this.pending.shift());
     }

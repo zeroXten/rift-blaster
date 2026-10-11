@@ -9,6 +9,7 @@ export const LINES = {
   tear: ["It's tearing. Something is pushing.", 'Membrane failing. As predicted.', "Something came through. I'd describe it, but you'd only worry."],
   breach: ['Full breach. I did say seal it.', "It's wide open now. Well done.", 'Breach. They will be bigger now.'],
   sealed: ['Sealed. Adequate.', 'Rift closed. One fewer.', 'Sealed. I did most of that.', 'Closed. Reality thanks you. I do not.'],
+  locked: ['It is held open from the other side. Shoot what comes out first.', 'Not yet. Thin them out. Then seal.', 'It will not close while they are still coming. Shoot.'],
   blocked: ["Can't seal. Something's in the doorway.", 'Shoot what is coming through. Then seal.'],
 
   streak: ['Acceptable shooting.', 'You hit several things. Noted.', 'Keep doing that.'],

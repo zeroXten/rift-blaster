@@ -8,12 +8,12 @@ import { clamp, rand } from '../util.js';
 import { Creature } from './base.js';
 
 export class Skaith extends Creature {
-  static def = { sprite: 'skaith', size: 2.6, hp: 3, damage: 15, emerge: 1.6, still: true };
+  static def = { sprite: 'skaith', size: 2.6, hp: 3, damage: 10, emerge: 1.6, still: true };
 
   constructor(game, rift, o) {
     super(game, rift, o);
     this.offYaw = rand(-30, 30) * DEG;
-    this.speed = 1.15 * (this.elite ? 1.2 : 1);
+    this.speed = 1.3 * (this.elite ? 1.2 : 1);
     this.pose = 0;
     this.moved = false;
     this.stepT = 0;

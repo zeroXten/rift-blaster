@@ -9,16 +9,16 @@ import { scanner } from '../scanner.js';
 import { clamp, rand } from '../util.js';
 import { Creature } from './base.js';
 
-const JUMP_AFTER = 0.8, GLARE_EVERY = 6, GLARE_CHARGE = 1.1;
+const JUMP_AFTER = 0.8, GLARE_EVERY = 5.5, GLARE_CHARGE = 1.1;
 
 export class Ootheen extends Creature {
-  static def = { sprite: 'ootheen', size: 1.2, hp: 1, damage: 3, emerge: 1.2 };
+  static def = { sprite: 'ootheen', size: 1.2, hp: 1, damage: 3, emerge: 1.0 };
 
   constructor(game, rift, o) {
     super(game, rift, o);
     this.hoverR = rand(5.5, 7);
     this.held = 0;
-    this.glareT = rand(4, 6);
+    this.glareT = rand(3, 4.5);
     this.charging = false;
     this.blink = 0;
   }

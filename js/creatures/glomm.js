@@ -7,7 +7,7 @@ import { scanner } from '../scanner.js';
 import { Creature } from './base.js';
 
 export class Glomm extends Creature {
-  static def = { sprite: 'glomm', size: 1.5, hp: 2, damage: 10, emerge: 1.3 };
+  static def = { sprite: 'glomm', size: 1.5, hp: 2, damage: 6, emerge: 1.3 };
 
   constructor(game, rift, o) {
     super(game, rift, o);
@@ -40,7 +40,7 @@ export class Glomm extends Creature {
       this.r = RIFT_DIST - 0.2;
       return;
     }
-    this.r -= 0.6 * (this.elite ? 1.2 : 1) * dt;
+    this.r -= 0.75 * (this.elite ? 1.2 : 1) * dt;
     this.yaw = this.baseYaw + Math.sin(this.t * 1.3 + this.ph) * 5 * DEG * this.progress;
     this.pitch -= this.pitch * 0.25 * dt;
     if (this.r <= REACH_DIST) this.reach();

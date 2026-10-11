@@ -6,6 +6,7 @@
 import { UI } from './config.js';
 import { R, box, disc, px, ring } from './render.js';
 import { drawText } from './font.js';
+import { fullscreen } from './fullscreen.js';
 
 const CASE = '#1b2030', KEY = '#262c40', LIGHT = '#3a4460', DARK = '#0a0c14', GROOVE = '#141826';
 
@@ -15,6 +16,7 @@ function controls() {
   return {
     pause: { x: v.x - 28, y: v.y + 6, w: 24, h: 22 },
     recal: { x: v.x - 28, y: v.y + 36, w: 24, h: 22 },
+    full: { x: v.x - 28, y: v.y + 66, w: 24, h: 22 },
     fire: { x: v.x + v.w + 22, y: Math.round(R.h * 0.56), r: 17 },
   };
 }
@@ -28,13 +30,13 @@ export function gauges() {
   };
 }
 
-// What a touch at canvas point p lands on: 'fire', 'pause', 'recal', 'case' (dead casing), or
-// null for the screen itself. Touch targets are much larger than the drawn controls: the whole
+// What a touch at canvas point p lands on: 'fire', 'pause', 'recal', 'full' (the full-screen
+// key, which works on every screen), 'case' (dead casing), or null for the screen itself. Touch targets are much larger than the drawn controls: the whole
 // right grip fires.
 export function frameHit(p) {
   const v = R.view;
   if (p.x >= v.x + v.w) return 'fire';
-  if (p.x < v.x) return p.y < v.y + 32 ? 'pause' : p.y < v.y + 64 ? 'recal' : 'case';
+  if (p.x < v.x) return p.y < v.y + 32 ? 'pause' : p.y < v.y + 64 ? 'recal' : p.y < v.y + 96 ? 'full' : 'case';
   return p.y < v.y || p.y >= v.y + v.h ? 'case' : null;
 }
 
@@ -57,7 +59,7 @@ export function drawFrame({ live = false, pressed = false, hot = false, led = UI
   px(0, h - 1, w, 1, DARK);
 
   // Grip ridges where the hands go.
-  for (let y = c.recal.y + c.recal.h + 10; y < vb - 22; y += 3) px(5, y, v.x - 12, 1, GROOVE);
+  for (let y = c.full.y + c.full.h + 10; y < vb - 22; y += 3) px(5, y, v.x - 12, 1, GROOVE);
   for (let y = v.y + 6; y < vb - 4; y += 3) {
     if (Math.abs(y - c.fire.y) > c.fire.r + 7) px(vr + 7, y, w - vr - 12, 1, GROOVE);
   }
@@ -84,7 +86,7 @@ export function drawFrame({ live = false, pressed = false, hot = false, led = UI
   drawText('HEAT', g.heat.x, g.heat.y, LIGHT);
   box(g.heat.bar, g.heat.y - 1, g.heat.barW, 9, UI.k, DARK);
 
-  // Left grip: pause, recalibrate, status light.
+  // Left grip: pause, recalibrate, full screen, status light.
   const ink = live ? UI.c : LIGHT;
   keycap(c.pause, live);
   px(c.pause.x + 8, c.pause.y + 6, 3, 9, ink);
@@ -93,6 +95,16 @@ export function drawFrame({ live = false, pressed = false, hot = false, led = UI
   ring(c.recal.x + 12, c.recal.y + 11, 5, 0, 6.3, ink);
   px(c.recal.x + 12, c.recal.y + 3, 1, 5, ink);
   px(c.recal.x + 12, c.recal.y + 11, 1, 1, ink);
+  // Corner brackets: pointing out to go full screen, pointing in to leave it.
+  keycap(c.full, true);
+  const on = fullscreen.on || fullscreen.standalone, kx = c.full.x + 12, ky = c.full.y + 10;
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      const x = kx + sx * (on ? 2 : 6), y = ky + sy * (on ? 2 : 5), dx = on ? sx : -sx, dy = on ? sy : -sy;
+      px(Math.min(x, x + dx * 3), y, 4, 1, UI.c);
+      px(x, Math.min(y, y + dy * 3), 1, 4, UI.c);
+    }
+  }
   drawText('RB-1', v.x - 28, vb - 18, LIGHT);
   box(v.x - 28, vb - 8, 6, 6, led, DARK);
 

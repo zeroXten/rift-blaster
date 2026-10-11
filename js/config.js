@@ -9,7 +9,7 @@ export const REACH_DIST = 1.4;       // a creature this close has reached the pl
 export const PITCH_LIMIT = 24;       // the view is short in landscape, so rifts stay nearer the horizon
 export const STAGE_TEAR = 0.33;      // rift width thresholds
 export const STAGE_BREACH = 0.66;
-export const RIFT_FULL_TIME = 60;    // seconds for an unattended rift to go from nothing to fully open
+export const RIFT_FULL_TIME = 80;    // seconds for an unattended rift to go from nothing to fully open
 export const MAX_CREATURES = 40;
 
 export const SEAL_ANGLE = 6;

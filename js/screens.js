@@ -75,7 +75,7 @@ const SCREENS = {
     para(`"${LINES.permission[0]}"`, lx, v.y + 86, lw - 10, UI.w);
     button('start', c.starting ? 'STAND BY...' : 'START', lx, v.y + 112, { primary: true, h: 26, w: 120 });
     para(c.debug
-      ? 'DESKTOP: DRAG OR ARROW KEYS TO LOOK. CLICK OR SPACE TO FIRE. 1-5 PICK AN INCIDENT.'
+      ? 'DESKTOP: DRAG OR ARROWS TO LOOK. CLICK OR SPACE TO FIRE. F FOR FULL SCREEN. 1-5 PICK AN INCIDENT.'
       : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 146, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST RUN ${best.score}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);

@@ -87,14 +87,15 @@ export class Creature {
   }
 
   hit() {
-    this.hp--;
     this.flash = 0.12;
     if (this.state === 'emerge') {
-      // Knocked back through, and the rift narrows.
+      // Not out yet, so it cannot be killed: it is knocked back through and the rift narrows.
       this.rift.narrow();
       this.e = 0;
+      play('hit', this.p.pan);
+      return;
     }
-    if (this.hp <= 0) this.die(true);
+    if (--this.hp <= 0) this.die(true);
     else play('hit', this.p.pan);
   }
 
