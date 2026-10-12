@@ -54,6 +54,22 @@ export function drawHud(game) {
   if (game.charge) chip('charge', 0, 'RIFT CHARGE: SHOOT A RIFT');
   if (game.banner && (game.banner.t > 0.5 || blink)) drawTextS(game.banner.text, cx, v.y + v.h * 0.3, game.banner.color, 2, 0.5);
 
+  const remark = () => {
+    // Scanner remark: one line at a time, a few words, along the bottom of the screen.
+    if (scanner.ttl > 0) {
+      const lines = wrapText(scanner.text, Math.min(60, ((v.w - 24) / 6) | 0)), lh = 9;
+      const y0 = v.y + v.h - 5 - lines.length * lh;
+      ctx.globalAlpha = 0.75;
+      px(v.x + 6, y0 - 3, v.w - 12, lines.length * lh + 4, UI.k);
+      ctx.globalAlpha = 1;
+      lines.forEach((l, i) => drawText(l, cx, y0 + i * lh, UI.c, 1, 0.5));
+    }
+  };
+
+  // While the seal stream is on, it and its clamp on the rift say everything: the crosshair
+  // and the seal ring are for aiming, and nothing is being aimed.
+  if (game.fx.sealing > 0) return remark();
+
   // Crosshair: red when overheated, yellow when on a target.
   const cc = hot ? UI.red : wp.target ? UI.yel : UI.c;
   const gap = 5 + (wp.kick > 0 ? 3 : 0) - (wp.target && !hot ? 1 : 0);
@@ -79,13 +95,6 @@ export function drawHud(game) {
     drawTextS('AIM AT A RIFT', cx, cy + 22, UI.mid, 1, 0.5);
   }
 
-  // Scanner remark: one line at a time, a few words, along the bottom of the screen.
-  if (scanner.ttl > 0) {
-    const lines = wrapText(scanner.text, Math.min(60, ((v.w - 24) / 6) | 0)), lh = 9;
-    const y0 = v.y + v.h - 5 - lines.length * lh;
-    ctx.globalAlpha = 0.75;
-    px(v.x + 6, y0 - 3, v.w - 12, lines.length * lh + 4, UI.k);
-    ctx.globalAlpha = 1;
-    lines.forEach((l, i) => drawText(l, cx, y0 + i * lh, UI.c, 1, 0.5));
-  }
+  remark();
 }
+
