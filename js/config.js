@@ -47,6 +47,8 @@ export const UI = {
 //   score     score multiplier                     drops    how often creatures leave power-ups
 //   strain    how fast open rifts wear reality down          dodge    how readily creatures sidestep the crosshair
 //   linger    how long a dropped power-up stays before it fades
+//   flank     how much faster creatures move while the player is not looking at them
+//   spit      seconds between a clinging Glomm's spits (0 for never)
 //   arc       how far to either side of straight ahead things may appear, in degrees (180 is all round)
 export const level = { key: 'medium', n: 1 };
 
@@ -54,9 +56,9 @@ export const level = { key: 'medium', n: 1 };
 // how quickly the levels escalate, so easy stays gentle for a long time. Easy also keeps
 // everything in an arc in front of the player, so a small child never has to turn around.
 export const DIFFICULTY = {
-  easy:   { name: 'EASY',   ramp: 0.4, speed: 0.6, spawn: 0.8, alive: 2,  pack: -1, damage: 0.3, hold: 0.6, growth: 0.5, maxOpen: -2, tol: 4, sealAngle: 1.5, seal: 0.7, heat: 0.5, patience: 2,   score: 0.5, drops: 2.2, strain: 0.35, dodge: 0, arc: 35, linger: 1.7 },
-  medium: { name: 'MEDIUM', ramp: 0.8, speed: 0.9, spawn: 1.1, alive: 99, pack: 0,  damage: 0.8, hold: 0.9, growth: 0.9, maxOpen: 0,  tol: 1, sealAngle: 1.1, seal: 1,   heat: 0.9, patience: 1.2, score: 1,   drops: 1.2, strain: 0.8, dodge: 0.6, arc: 180, linger: 1.15 },
-  hard:   { name: 'HARD',   ramp: 1,   speed: 1,   spawn: 1,   alive: 99, pack: 0,  damage: 1,   hold: 1,   growth: 1,   maxOpen: 0,  tol: 0, sealAngle: 1,   seal: 1,   heat: 1,   patience: 1,   score: 1.5, drops: 1, strain: 1, dodge: 1, arc: 180, linger: 1 },
+  easy:   { name: 'EASY',   ramp: 0.4, speed: 0.6, spawn: 0.8, alive: 2,  pack: -1, damage: 0.3, hold: 0.6, growth: 0.5, maxOpen: -2, tol: 4, sealAngle: 1.5, seal: 0.7, heat: 0.5, patience: 2,   score: 0.5, drops: 2.2, strain: 0.35, dodge: 0, arc: 35, linger: 1.7, flank: 1, spit: 0 },
+  medium: { name: 'MEDIUM', ramp: 0.8, speed: 0.9, spawn: 1.1, alive: 99, pack: 0,  damage: 0.8, hold: 0.9, growth: 0.9, maxOpen: 0,  tol: 1, sealAngle: 1.1, seal: 1,   heat: 0.9, patience: 1.2, score: 1,   drops: 1.2, strain: 0.8, dodge: 0.6, arc: 180, linger: 1.15, flank: 1.3, spit: 5.5 },
+  hard:   { name: 'HARD',   ramp: 1,   speed: 1,   spawn: 1,   alive: 99, pack: 0,  damage: 1,   hold: 1,   growth: 1,   maxOpen: 0,  tol: 0, sealAngle: 1,   seal: 1,   heat: 1,   patience: 1,   score: 1.5, drops: 1, strain: 1, dodge: 1, arc: 180, linger: 1, flank: 1.6, spit: 4.5 },
 };
 
 // Every level is harder than the last, without limit: faster creatures in bigger groups,
@@ -65,7 +67,7 @@ export function setLevel(n) {
   const d = DIFFICULTY[level.key], t = (n - 1) * d.ramp;
   Object.assign(level, {
     n,
-    speed: Math.min(2.6, 0.9 + 0.09 * t) * d.speed,
+    speed: Math.min(2.8, 1 + 0.09 * t) * d.speed,
     spawn: Math.max(0.4, 1.15 - 0.07 * t) * d.spawn,
     alive: d.alive + Math.floor(t),
     pack: Math.min(4, Math.floor(t / 3)) + d.pack,
@@ -84,6 +86,8 @@ export function setLevel(n) {
     dodge: Math.min(0.85, 0.15 * t) * d.dodge,
     arc: d.arc,
     linger: d.linger,
+    flank: d.flank,
+    spit: d.spit ? Math.max(2.5, d.spit - 0.2 * t) : 0,
   });
 }
 

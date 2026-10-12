@@ -7,9 +7,9 @@ comes out of a rift until it weakens, then hold SEAL on it to close it. Power-up
 are on buttons under your left thumb. Levels run straight into one another and keep getting
 harder.
 
-There are two ways to lose. **Health** is you: creatures that reach you take it. **Reality** is
-the room: every rift left open wears it down, the screen cracks and tears as it goes, and
-sealing rifts mends it.
+There are two ways to lose. **Health** is you: creatures that reach you take it, and the
+scanner's screen cracks as it goes. **Reality** is the room: every rift left open wears it
+down, fractures appear in the space around you, and sealing rifts mends it.
 
 Plain HTML, CSS and JavaScript modules: no build step, no libraries, no backend, no asset files.
 Sprites, font, sound effects and music are all generated in code. See [SPEC.md](SPEC.md).
@@ -70,6 +70,7 @@ js/pickups.js       power-ups dropped by creatures
 js/weapon.js        aiming, heat, firing and sealing
 js/game.js          one level in play
 js/frame.js         the scanner's casing: gauges, system keys, power-up buttons, SEAL and FIRE
+js/fractures.js     the room coming apart as reality falls
 js/hud.js, indicators.js, screens.js, fx.js
 js/audio/sfx.js     synthesised effects
 js/audio/music.js   sequencer and pattern data

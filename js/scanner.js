@@ -24,7 +24,7 @@ export const LINES = {
   collapsing: ['Reality is close to collapse. Seal something.'],
   recal: ['Recalibrated.'],
 
-  glomm: ['Glomm on the rift. It is widening it.', 'A Glomm. Shoot it off. Two shots.'],
+  glomm: ['Glomm on the rift. It widens it, and it spits.', 'A Glomm. Shoot it off. Two shots.'],
   skaith: ['Skaith. It only moves when you look away.', 'Skaith. Keep it in view.'],
   ootheen: ['Ootheen. Shoot it quickly, or it moves.'],
   ootheenJump: ['It moved.', 'Too slow. It jumped.'],

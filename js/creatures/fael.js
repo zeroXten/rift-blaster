@@ -24,7 +24,7 @@ export class Fael extends Creature {
 
   behave(dt) {
     this.ghost = this.t % CYCLE > SOLID;
-    this.r -= 0.55 * level.speed * dt;
+    this.r -= 0.55 * level.speed * this.flank * dt;
     const k = this.progress;
     this.yaw = this.rift.yaw + Math.sin(this.t * 0.9 + this.ph) * this.swing * Math.min(1, k * 3 + 0.2);
     this.pitch = this.rift.pitch * (1 - 0.5 * k) + Math.sin(this.t * 1.3 + this.ph) * 4 * DEG;

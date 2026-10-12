@@ -2,7 +2,7 @@
 
 import { Yrrk, Spawnling } from './yrrk.js';
 import { Zik } from './zik.js';
-import { Glomm } from './glomm.js';
+import { Glob, Glomm } from './glomm.js';
 import { Brakk } from './brakk.js';
 import { Skaith } from './skaith.js';
 import { Fael } from './fael.js';
@@ -15,6 +15,7 @@ export const CREATURES = {
   spawnling: Spawnling,
   zik: Zik,
   glomm: Glomm,
+  glob: Glob,
   brakk: Brakk,
   skaith: Skaith,
   fael: Fael,

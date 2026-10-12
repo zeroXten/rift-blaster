@@ -2,7 +2,8 @@
 // level's last rift is sealed, advance() lays the next level over the top of it without a
 // break. There are two ways to lose. Health is the player: creatures that reach them take it.
 // Reality is the room: every rift left open wears it down, and a crowd of creatures adds to
-// that, so the run can be lost without ever being touched.
+// that, so the run can be lost without ever being touched. Damage to the player shows on
+// the scanner's screen; damage to reality shows as fractures out in the room.
 
 import { CROWD_FREE, CROWD_STRAIN, MAX_CREATURES, PITCH_LIMIT, SEAL_RESTORES, STRAIN, level } from './config.js';
 import { DEG, view, wrapAngle } from './projection.js';
@@ -13,6 +14,7 @@ import { Rift } from './rift.js';
 import { CREATURES } from './creatures/index.js';
 import { Weapon } from './weapon.js';
 import { Fx } from './fx.js';
+import { Fractures } from './fractures.js';
 import { MAX_HELD, POWERUPS, Pickup, dropChance } from './pickups.js';
 import { drawHud } from './hud.js';
 import { drawIndicators } from './indicators.js';
@@ -49,6 +51,7 @@ export class Game {
     this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
     this.weapon = new Weapon();
     this.fx = new Fx();
+    this.fractures = new Fractures();
     this.emitted = {};
     this.streak = 0;
     this.misses = 0;
@@ -138,6 +141,7 @@ export class Game {
 
   onKill(creature) {
     this.stats.kills++;
+    if (creature.def.minor) return;      // a shot-down projectile: nothing more comes of it
     const rift = creature.rift;
     if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.def.hints) scanner.say('weak', true);
     this.emit('firstKill');
@@ -278,6 +282,7 @@ export class Game {
     for (const item of this.pickups) item.update(dt);
     this.weapon.update(dt, this);
     this.fx.update(dt);
+    this.fractures.update(dt, this);
     this.creatures = this.creatures.filter(c => !c.dead);
     this.pickups = this.pickups.filter(item => !item.taken && item.life > 0);
 
@@ -341,6 +346,7 @@ export class Game {
     const glitch = this.ending === 'lost' ? 1 : this.fx.glitch / 0.4;
     if (camera.ready) cameraFrame(camera.video, glitch);
     else debugBackdrop(glitch);
+    this.fractures.draw();
     for (const r of this.rifts) r.draw();
     // Painter's order, far to near, the way Doom drew its monsters.
     this.creatures.sort((a, b) => b.r - a.r);
@@ -353,7 +359,7 @@ export class Game {
     }
     for (const item of this.pickups) item.draw();
     this.fx.draw();
-    this.fx.drawFracture(this.reality, this.health);
+    this.fx.drawDamage(this.health);
     drawIndicators(this);
     drawHud(this);
   }

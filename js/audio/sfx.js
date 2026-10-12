@@ -127,6 +127,15 @@ const SOUNDS = {
     tone({ f: 600, f2: 1500, dur: 0.1, vol: 0.16, mod: { ratio: 1.5, index: 4 } });
     tone({ f: 1100, f2: 180, dur: 0.14, delay: 0.09, vol: 0.14, mod: { ratio: 1.5, index: 3 } });
   },
+  kill_glob() {
+    tone({ f: 700, f2: 200, dur: 0.09, type: 'triangle', vol: 0.16 });
+    noise({ dur: 0.06, vol: 0.12, filter: 'lowpass', f: 1200 });
+  },
+  // A Glomm spitting
+  spit() {
+    tone({ f: 260, f2: 620, dur: 0.12, type: 'sawtooth', vol: 0.14, mod: { ratio: 0.5, index: 4 } });
+    noise({ dur: 0.08, vol: 0.1, filter: 'bandpass', f: 1500 });
+  },
   kill_glomm() {
     tone({ f: 180, f2: 50, dur: 0.38, type: 'sawtooth', vol: 0.22, mod: { ratio: 0.5, index: 6 } });
     noise({ dur: 0.25, vol: 0.2, filter: 'lowpass', f: 500 });

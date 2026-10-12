@@ -9,7 +9,7 @@ import { rand } from '../util.js';
 import { Creature } from './base.js';
 
 export class Brakk extends Creature {
-  static def = { sprite: 'brakk', size: 1.9, hp: 5, damage: 15, emerge: 1.8, still: true };
+  static def = { sprite: 'brakk', size: 1.9, hp: 5, damage: 12, emerge: 1.8, still: true };
 
   constructor(game, rift, o) {
     super(game, rift, o);
@@ -21,7 +21,7 @@ export class Brakk extends Creature {
   emerged() { scanner.say('brakk'); }
 
   behave(dt) {
-    this.r -= 0.5 * level.speed * dt;
+    this.r -= 0.5 * level.speed * this.flank * dt;
     const k = this.progress;
     this.yaw = this.rift.yaw + this.offYaw * k + Math.sin(this.t * 0.8 + this.ph) * 13 * DEG * Math.min(1, k * 4);
     this.pitch = this.rift.pitch * (1 - k);

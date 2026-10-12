@@ -9,7 +9,8 @@ import { drawBulge } from '../rift.js';
 import { play } from '../audio/sfx.js';
 
 export class Creature {
-  // sprite, size (world units tall), hp, damage (health lost when it reaches the player), emerge (seconds)
+  // sprite, size (world units tall), hp, damage (health lost when it reaches the player), emerge
+  // (seconds). minor marks a projectile: shooting it does not weaken its rift or drop anything.
   static def = { sprite: 'yrrk', size: 1, hp: 1, damage: 4, emerge: 1 };
 
   constructor(game, rift, o = {}) {
@@ -109,8 +110,12 @@ export class Creature {
     return this.side;
   }
 
-  // Creatures quicken over the last stretch, so one that gets close arrives in a rush.
-  get rush() { return this.r < 3.5 ? 1.6 : 1; }
+  // Creatures move faster while the player is not looking at them, so the ones behind are
+  // the ones that arrive. The dots at the edge of the screen are the warning.
+  get flank() { return this.on ? 1 : level.flank; }
+
+  // The small ones also quicken over the last stretch.
+  get rush() { return (this.r < 3.5 ? 1.6 : 1) * this.flank; }
 
   // Is the crosshair on this creature? tolPx is the weapon's tolerance in pixels. A creature
   // still squeezing through cannot be targeted: the rift swallows shots aimed into it.
@@ -130,7 +135,7 @@ export class Creature {
     this.state = 'dying';
     this.dieT = 0;
     if (killed) {
-      this.rift.kills++;
+      if (!this.def.minor) this.rift.kills++;
       play('kill_' + this.def.sprite, this.p.pan);
       this.game.onKill(this);
     }

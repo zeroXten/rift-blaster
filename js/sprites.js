@@ -303,6 +303,12 @@ const GRIDS = {
 // The Ummagog's young are Yrrk-shaped.
 GRIDS.spawnling = GRIDS.yrrk;
 
+// What a Glomm spits.
+GRIDS.glob = { mirror: true, frames: [
+  ['.kk', 'k34', 'k33', 'k23', 'k22', '.kk'],
+  ['.kk', 'k33', 'k34', 'k33', 'k22', '.kk'],
+] };
+
 // Zik: a tiny dart with wings, up and down.
 GRIDS.zik = { mirror: true, frames: [[
   'k....',
