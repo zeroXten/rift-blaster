@@ -4,21 +4,23 @@
 // drew so main.js can hit-test taps.
 
 import { DIFFICULTY, UI, level } from './config.js';
-import { R, blit, box, cameraFrame, debugBackdrop, px } from './render.js';
+import { R, blit, box, cameraFrame, debugBackdrop, px, reticle } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame } from './frame.js';
 import { camera } from './video.js';
 import { DIMS, getSprite } from './sprites.js';
 import { POWERUPS, powerIcon } from './pickups.js';
 import { drawRift, makeShape } from './rift.js';
+import { arrowAt, dotAt, plusAt } from './indicators.js';
 import { LINES } from './scanner.js';
 
 const shape = makeShape();
 
 // The how-to-play guide. Its first page is these paragraphs; then the creatures, then the power-ups.
-const GUIDE_PAGES = ['HOW TO PLAY', 'CREATURES', 'POWER-UPS'];
+const GUIDE_PAGES = ['HOW TO PLAY', 'SIGNS', 'CREATURES', 'POWER-UPS'];
+export const GUIDE_LENGTH = GUIDE_PAGES.length;
 const HOW_TO = [
-  'Rifts open around the room. Arrows at the edge of the screen point to them.',
+  'Rifts open around the room. Arrows at the edge of the screen point to them: see SIGNS.',
   'Creatures come out of them. Dots at the edge of the screen show any you cannot see. Shoot each one with FIRE once it is clear of its rift.',
   'Every creature you shoot weakens its rift: the bar under it drains. When it is empty, aim at the rift and hold SEAL.',
   'HEALTH is you: creatures that reach you take it. REALITY is the room: leaving a rift open once it can be sealed wears it down. Lose either and the run is over.',
@@ -67,6 +69,14 @@ function para(text, x, y, width, color = UI.c, align = 0.5) {
   return y + lines.length * 9;
 }
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+// "BUILD 12 OCT 14:32"
+function buildLabel(time) {
+  const d = new Date(time), two = n => String(n).padStart(2, '0');
+  return `BUILD ${d.getDate()} ${MONTHS[d.getMonth()]} ${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
 function heading(text, x, y, color, scale, align = 0.5) {
   drawText(text, x + scale, y + scale, '#3d060c', scale, align);
   drawText(text, x, y, color, scale, align);
@@ -92,6 +102,8 @@ const SCREENS = {
       : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 158, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST ${best.score}  LEVEL ${best.level || 1}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
+    // When the files now running were last changed on the server, in local time.
+    if (c.build) drawText(buildLabel(c.build), v.x + v.w - 5, v.y + v.h - 11, UI.mid, 1, 1);
   },
 
   // How the game works, what the creatures are, and what the power-ups do: three pages.
@@ -103,6 +115,22 @@ const SCREENS = {
     if (page === 0) {
       for (const text of HOW_TO) y = para(text, v.x + 10, y, v.w - 20, UI.w, 0) + 4;
     } else if (page === 1) {
+      // Everything that appears around the edge of the screen, drawn as it is in play.
+      const green = DIMS.vesh.ramp[2], t = c.t, ix = v.x + 22;
+      const row = (name, text, draw) => {
+        draw(y + 8);
+        drawText(name, v.x + 44, y, UI.w);
+        drawText(text, v.x + 44, y + 9, UI.mid);
+        y += 20;
+      };
+      row('ARROW', 'A rift that way, in its colour. Bigger: wider.', cy => arrowAt(ix + 5, cy, 1, 0, green, 8));
+      row('TWO ARROWHEADS', 'That rift is behind you.', cy => arrowAt(ix + 8, cy, 1, 0, green, 8, true));
+      row('TURNING RING', 'That rift is weak enough. Go and hold SEAL.', cy => { arrowAt(ix + 5, cy, 1, 0, green, 6); reticle(ix + 1, cy, 9, t); });
+      row('DOT', 'A creature you cannot see.', cy => dotAt(ix, cy, green, false, t));
+      row('BIG RED DOT', 'A creature about to reach you.', cy => dotAt(ix, cy, green, true, t));
+      row('PLUS', 'A power-up waiting to be collected.', cy => plusAt(ix, cy, POWERUPS.rapid.color));
+      row('BAR UNDER A RIFT', 'Its strength. Shoot its creatures to drain it.', cy => { px(ix - 12, cy - 2, 25, 5, UI.k); px(ix - 11, cy - 1, 23, 3, DIMS.vesh.ramp[0]); px(ix - 11, cy - 1, 13, 3, DIMS.vesh.ramp[3]); });
+    } else if (page === 2) {
       // Two columns. A creature is the colour of the rift it comes from.
       const half = Math.ceil(BESTIARY.length / 2), cw = v.w / 2;
       BESTIARY.forEach((b, i) => {

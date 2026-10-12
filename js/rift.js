@@ -3,7 +3,7 @@
 
 import { RIFT_DIST, RIFT_FULL_TIME, STAGE_BREACH, STAGE_TEAR, level } from './config.js';
 import { DEG, dirFromBearing, onScreen, project, view } from './projection.js';
-import { R, disc, line, px, ring } from './render.js';
+import { R, disc, line, px, reticle, ring } from './render.js';
 import { DIMS } from './sprites.js';
 import { DIM_SPAWN } from './levels.js';
 import { play } from './audio/sfx.js';
@@ -394,6 +394,8 @@ export class Rift {
     const lit = this.flare > 0 ? [ramp[1], ramp[2], ramp[3], '#ffffff'] : ramp;
     drawRift(this.style, this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
       this.sealed ? SEAL_RAMP : lit, this.shape, k, this.size > 1);
+    // Weak enough to seal: the same turning mark that its arrow carries when it is off screen.
+    if (!this.sealed && !this.locked) reticle(this.p.x, this.p.y, Math.min(Math.max(this.hw, this.hh) + 6, view.h * 0.42), this.t);
     // Strength gauge: how hard the other side is still holding the rift open. It drains as the
     // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.
     if (!this.sealed && this.lockKills) {

@@ -183,6 +183,17 @@ export function ring(cx, cy, r, a0, a1, color, th = 1) {
   }
 }
 
+// The "ready to seal" mark: four arcs turning around a point, flashing white and cyan. The
+// same mark is used around a rift on screen and around the arrow to one that is off screen.
+export function reticle(cx, cy, r, t) {
+  const color = ((t * 8) | 0) & 1 ? '#ffffff' : '#39e6d0';
+  for (let i = 0; i < 4; i++) {
+    const a = t * 2.5 + (i * Math.PI) / 2;
+    ring(cx, cy, r + 1, a, a + 0.95, '#05070f', 3);
+    ring(cx, cy, r, a, a + 0.95, color, 2);
+  }
+}
+
 // Filled circle, as scanlines.
 export function disc(cx, cy, r, color) {
   const ctx = R.ctx;

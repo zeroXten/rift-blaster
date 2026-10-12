@@ -20,7 +20,7 @@ import { Game } from './game.js';
 import { frameHit } from './frame.js';
 import { enterFullscreen, exitFullscreen, fullscreen } from './fullscreen.js';
 import { POWERUPS } from './pickups.js';
-import { drawLevelFlash, drawScreen } from './screens.js';
+import { GUIDE_LENGTH, drawLevelFlash, drawScreen } from './screens.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { loadStore, recordScore, saveStore } from './storage.js';
 import { pick } from './util.js';
@@ -202,7 +202,7 @@ function act(id) {
   switch (id) {
     case 'start': start(); break;
     case 'guide': ui.page = 0; setState('guide'); break;
-    case 'guide_next': ui.page = (ui.page + 1) % 3; break;
+    case 'guide_next': ui.page = (ui.page + 1) % GUIDE_LENGTH; break;
     case 'easy':
     case 'medium':
     case 'hard':
@@ -375,7 +375,7 @@ function tick(dt) {
     else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, build: window.riftBuild, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.
