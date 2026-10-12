@@ -13,13 +13,13 @@ import { Rift } from './rift.js';
 import { CREATURES } from './creatures/index.js';
 import { Weapon } from './weapon.js';
 import { Fx } from './fx.js';
-import { MAX_HELD, POWERUPS, Pickup } from './pickups.js';
+import { MAX_HELD, POWERUPS, Pickup, dropChance } from './pickups.js';
 import { drawHud } from './hud.js';
 import { drawIndicators } from './indicators.js';
 import { play } from './audio/sfx.js';
 import { setIntensity } from './audio/music.js';
 import { scanner } from './scanner.js';
-import { rand, vibrate } from './util.js';
+import { clamp, rand, vibrate } from './util.js';
 
 const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
@@ -93,6 +93,15 @@ export class Game {
     return Math.min(level.alive - live, MAX_CREATURES - this.creatures.length);
   }
 
+  // On easy everything is kept within an arc in front of the player, so there is no need to
+  // turn around. "In front" is where they were facing as the run started, or when they last
+  // recalibrated. Takes and returns a yaw in radians; margin widens the arc, in degrees.
+  inArc(yaw, margin = 0) {
+    if (level.arc >= 180) return yaw;
+    const limit = (level.arc + margin) * DEG;
+    return clamp(wrapAngle(yaw), -limit, limit);
+  }
+
   // Does this level include that kind of creature yet?
   allows(type) {
     return !this.def.types || this.def.types.includes(type);
@@ -106,16 +115,20 @@ export class Game {
 
   openRift(def) {
     // A bearing given by the level is relative to where the player is facing right now.
+    const arc = level.arc, narrow = arc < 180;
     let { yaw, pitch } = def;
     if (yaw != null) yaw += view.yaw / DEG;
     else {
-      // Anywhere in the full circle, but not on top of a rift that is already open.
+      // Anywhere the difficulty allows, but not on top of a rift that is already open.
+      const apart = Math.min(50, arc * 0.7) * DEG;
       for (let i = 0; i < 30; i++) {
-        yaw = rand(-180, 180);
-        if (this.rifts.every(r => r.sealed || Math.abs(wrapAngle(yaw * DEG - r.yaw)) > 50 * DEG)) break;
+        yaw = rand(-arc, arc);
+        if (this.rifts.every(r => r.sealed || Math.abs(wrapAngle(yaw * DEG - r.yaw)) > apart)) break;
       }
     }
-    if (pitch == null) pitch = (Math.random() + Math.random() - 1) * PITCH_LIMIT;
+    yaw = this.inArc(yaw * DEG) / DEG;
+    // With a narrow arc, rifts also stay near eye level.
+    if (pitch == null) pitch = (Math.random() + Math.random() - 1) * PITCH_LIMIT * (narrow ? 0.5 : 1);
     const rift = new Rift(this, { ...def, yaw, pitch });
     this.rifts.push(rift);
     play('crack', rift.p.pan);
@@ -133,22 +146,25 @@ export class Game {
     this.maybeDrop(creature);
   }
 
-  // Fairly often a shot creature leaves a power-up, off to one side of where it died.
+  // A shot creature may leave a power-up, off to one side of where it died. How often, and
+  // which one, follows how much is going on: more of them in a crowd, and the kind that would
+  // help most right now. Only kinds unlocked by this level can appear.
   maybeDrop(creature) {
     if (this.def.noDrops || creature.pods || this.ending) return;
     this.sinceDrop++;
     if (this.t - this.dropT < 4 || this.pickups.length >= 2) return;
-    if (Math.random() > 0.22 * level.drops && this.sinceDrop < 6) return;
-    // Health turns up when it is needed; nothing turns up that the player is already full of.
-    const weight = kind => (this.inv[kind] >= MAX_HELD ? 0
-      : kind === 'health' ? (this.health < 50 ? 4 : this.health < 85 ? 2 : 0.5)
-      : POWERUPS[kind].weight);
+    const state = { live: 0, open: 0, wide: 0, health: this.health, reality: this.reality };
+    for (const c of this.creatures) if (!c.pods && c.state === 'active') state.live++;
+    for (const r of this.rifts) if (!r.sealed) { state.open++; if (r.stage === 2) state.wide++; }
+    // A long dry spell ends with a drop regardless.
+    if (Math.random() > dropChance(state.live) * level.drops && this.sinceDrop < 10) return;
+    const want = kind => (level.n < POWERUPS[kind].from || this.inv[kind] >= MAX_HELD ? 0 : POWERUPS[kind].want(state));
     const kinds = Object.keys(POWERUPS);
-    let roll = Math.random() * kinds.reduce((sum, k) => sum + weight(k), 0);
-    const kind = kinds.find(k => (roll -= weight(k)) < 0);
+    let roll = Math.random() * kinds.reduce((sum, k) => sum + want(k), 0);
+    const kind = kinds.find(k => (roll -= want(k)) < 0);
     if (!kind) return;
     const side = Math.random() < 0.5 ? -1 : 1;
-    this.pickups.push(new Pickup(kind, creature.yaw + side * rand(11, 17) * DEG, creature.pitch + rand(-7, 7) * DEG));
+    this.pickups.push(new Pickup(kind, this.inArc(creature.yaw + side * rand(11, 17) * DEG, 8), creature.pitch + rand(-7, 7) * DEG));
     this.dropT = this.t;
     this.sinceDrop = 0;
     play('drop', creature.p.pan);

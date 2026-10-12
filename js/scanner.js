@@ -33,7 +33,7 @@ export const LINES = {
   brakk: ['Brakk. Armoured. Five shots.', 'A Brakk. Start shooting.'],
   thrum: ['Thrum. It is about to charge.', 'That one charges. Shoot it first.'],
 
-  drop: ['Power-up. Shoot it to collect it.'],
+  drop: ['Power-up. Shoot it before it fades.'],
   got: ['Collected. Use it from the left side.', 'Collected.'],
   empty: ['None of those left.'],
   full: ['You are already at full health.'],

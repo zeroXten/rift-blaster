@@ -86,8 +86,10 @@ These can only be judged with the phone in your hand:
   `js/config.js`.
 - Difficulty: how each level gets harder than the last is `setLevel` at the bottom of
   `js/config.js`, and the easy / medium / hard picker is the table of multipliers above it
-  (easy is meant for small children). What a level contains is `levelDef` in `js/levels.js`;
+  (easy is meant for small children: its `arc` keeps everything within 35° of straight
+  ahead, so there is no turning around). What a level contains is `levelDef` in `js/levels.js`;
   damage and speed are in each creature file.
 - Variety: which creatures each dimension sends, and how often, is the `spawns` list in
-  `js/levels.js`; power-up types, durations and frequency are at the top of `js/pickups.js`.
+  `js/levels.js`; power-up types, the level each one first appears on, how long they last and how often they
+  drop are at the top of `js/pickups.js`.
 - Music: patterns are note data at the top of `js/audio/music.js`.

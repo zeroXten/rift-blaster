@@ -46,6 +46,7 @@ export class Creature {
 
   // Project onto the screen. `on` means some of the sprite is actually visible.
   place() {
+    this.yaw = this.game.inArc(this.yaw, 12);
     dirFromBearing(this.yaw, this.pitch, this.dir);
     const p = project(this.dir, this.p);
     this.scale = (this.size / this.r) * view.f / this.sprite.h;

@@ -33,8 +33,10 @@ export class Ootheen extends Creature {
 
   behave(dt) {
     // Round and round, changing direction now and then.
-    this.baseYaw += this.drift * level.speed * dt;
-    if ((this.turnT -= dt) <= 0) { this.turnT = rand(3, 6); this.drift = -this.drift; }
+    const round = this.baseYaw + this.drift * level.speed * dt;
+    this.baseYaw = this.game.inArc(round, 8);
+    // It turns back now and then, and at the edge of where it is allowed to go.
+    if ((this.turnT -= dt) <= 0 || this.baseYaw !== round) { this.turnT = rand(3, 6); this.drift = -this.drift; }
     const ease = Math.min(1, dt * 3);
     this.r += (this.hoverR - this.r) * Math.min(1, dt * 1.5);
     this.yaw += wrapAngle(this.baseYaw - this.yaw) * ease;
@@ -61,7 +63,9 @@ export class Ootheen extends Creature {
 
   jump() {
     if (this.p.front) this.game.fx.burst(this.p.x, this.p.y, DIMS[this.dim].ramp, 8, 40);
-    this.baseYaw = this.yaw + (Math.random() < 0.5 ? -1 : 1) * rand(28, 60) * DEG;
+    const far = this.yaw + (Math.random() < 0.5 ? -1 : 1) * rand(28, 60) * DEG, kept = this.game.inArc(far, 8);
+    // If the jump was cut short by the edge of the arc, it goes the other way instead.
+    this.baseYaw = Math.abs(kept - this.yaw) < 15 * DEG ? this.game.inArc(2 * this.yaw - far, 8) : kept;
     this.basePitch = rand(-12, 12) * DEG;
     this.yaw = this.baseYaw;
     this.pitch = this.basePitch;

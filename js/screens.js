@@ -1,18 +1,40 @@
-// Everything outside play: title, permissions help, game over and pause, plus the flash that
-// marks each new level. Each is laid out on the scanner's screen
+// Everything outside play: title, the how-to-play guide, permissions help, game over and
+// pause, plus the flash that marks each new level. Each is laid out on the scanner's screen
 // (R.view) with the pixel font, inside the same casing as the game, and returns the buttons it
 // drew so main.js can hit-test taps.
 
 import { DIFFICULTY, UI, level } from './config.js';
-import { R, box, cameraFrame, debugBackdrop, px } from './render.js';
+import { R, blit, box, cameraFrame, debugBackdrop, px } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame } from './frame.js';
 import { camera } from './video.js';
-import { DIMS } from './sprites.js';
+import { DIMS, getSprite } from './sprites.js';
+import { POWERUPS, powerIcon } from './pickups.js';
 import { drawRift, makeShape } from './rift.js';
 import { LINES } from './scanner.js';
 
 const shape = makeShape();
+
+// The how-to-play guide. Its first page is these paragraphs; then the creatures, then the power-ups.
+const GUIDE_PAGES = ['HOW TO PLAY', 'CREATURES', 'POWER-UPS'];
+const HOW_TO = [
+  'Rifts open around the room. Arrows at the edge of the screen point to them.',
+  'Creatures come out of them. Dots at the edge of the screen show any you cannot see. Shoot each one with FIRE once it is clear of its rift.',
+  'Every creature you shoot weakens its rift: the bar under it drains. When it is empty, aim at the rift and hold SEAL.',
+  'HEALTH is you: creatures that reach you take it. REALITY is the room: open rifts wear it down. Lose either and the run is over.',
+  'Seal every rift to clear a level. Each level is harder than the last.',
+];
+const BESTIARY = [
+  { name: 'Yrrk', sprite: 'yrrk', dim: 'vesh', note: 'Corkscrewing packs.' },
+  { name: 'Zik', sprite: 'zik', dim: 'vesh', note: 'Tiny, fast, erratic.' },
+  { name: 'Glomm', sprite: 'glomm', dim: 'ulta', note: 'Widens its rift.' },
+  { name: 'Brakk', sprite: 'brakk', dim: 'ulta', note: 'Armoured. Five shots.' },
+  { name: 'Skaith', sprite: 'skaith', dim: 'hollow', note: 'Moves when unseen.' },
+  { name: 'Fael', sprite: 'fael', dim: 'hollow', note: 'Solid half the time.' },
+  { name: 'Ootheen', sprite: 'ootheen', dim: 'miridian', note: 'Jumps if aimed at.' },
+  { name: 'Thrum', sprite: 'thrum', dim: 'miridian', note: 'Warns, then charges.' },
+  { name: 'The Ummagog', sprite: 'core', dim: 'unknown', note: 'Boss. Shoot the glow.' },
+];
 let buttons = [];
 
 // Button centred on cx. primary blinks; on marks the selected one of a set.
@@ -63,12 +85,48 @@ const SCREENS = {
     Object.keys(DIFFICULTY).forEach((key, i) => {
       button(key, DIFFICULTY[key].name, lx + (i - 1) * 60, v.y + 106, { w: 56, h: 17, on: key === level.key, dim: true });
     });
-    button('start', c.starting ? 'STAND BY...' : 'START', lx, v.y + 128, { primary: true, h: 24, w: 120 });
+    button('start', c.starting ? 'STAND BY' : 'START', lx - 44, v.y + 128, { primary: true, h: 24, w: 98 });
+    button('guide', 'HOW TO PLAY', lx + 53, v.y + 128, { h: 24, w: 84 });
     para(c.debug
       ? 'DESKTOP: DRAG TO LOOK. CLICK OR SPACE FIRES. E OR RIGHT BUTTON SEALS. 1-5 USE POWER-UPS. F: FULL SCREEN.'
       : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 158, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST ${best.score}  LEVEL ${best.level || 1}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
+  },
+
+  // How the game works, what the creatures are, and what the power-ups do: three pages.
+  guide(c) {
+    const v = R.view, mx = v.x + v.w / 2, page = c.page;
+    backdrop(c, 0.82);
+    heading(GUIDE_PAGES[page], mx, v.y + 8, UI.c, 2);
+    let y = v.y + 30;
+    if (page === 0) {
+      for (const text of HOW_TO) y = para(text, v.x + 10, y, v.w - 20, UI.w, 0) + 4;
+    } else if (page === 1) {
+      // Two columns. A creature is the colour of the rift it comes from.
+      const half = Math.ceil(BESTIARY.length / 2), cw = v.w / 2;
+      BESTIARY.forEach((b, i) => {
+        const x = v.x + 6 + (i < half ? 0 : cw), ey = y + (i % half) * 21, spr = getSprite(b.sprite, b.dim);
+        blit(spr.frames[0], x + 10, ey + 8, Math.min(1, 19 / Math.max(spr.w, spr.h)));
+        drawText(b.name, x + 24, ey, DIMS[b.dim].ramp[2]);
+        drawText(b.note, x + 24, ey + 9, UI.mid);
+      });
+      para('A creature is the colour of the rift it comes from.', mx, y + half * 21 + 2, v.w - 20, UI.w);
+    } else {
+      y = para('Creatures sometimes drop these. Shoot one within a few seconds to collect it, then use it from the buttons on the left. Better ones appear on later levels.', v.x + 10, y, v.w - 20, UI.w, 0) + 6;
+      for (const kind of Object.keys(POWERUPS)) {
+        const def = POWERUPS[kind];
+        blit(powerIcon(kind), v.x + 17.5, y + 8.5, 2);
+        drawText(def.name, v.x + 32, y, def.color);
+        drawText(`LEVEL ${def.from}+`, v.x + v.w - 10, y, UI.mid, 1, 1);
+        drawText(def.info, v.x + 32, y + 9, UI.mid);
+        y += 21;
+      }
+    }
+    const by = v.y + v.h - 26;
+    button('title', 'BACK', mx - 82, by, { w: 90 });
+    drawText(`${page + 1}/${GUIDE_PAGES.length}`, mx, by + 7, UI.mid, 1, 0.5);
+    button('guide_next', page < GUIDE_PAGES.length - 1 ? 'NEXT' : 'FIRST PAGE', mx + 82, by, { primary: true, w: 90 });
   },
 
   // Shown when the camera or motion sensors were refused: how to recover, and ways to play anyway.

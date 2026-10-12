@@ -1,5 +1,5 @@
 // Bootstrap, the frame loop, input, and the state machine. Landscape, held in both hands:
-// title -> (help) -> play <-> paused -> gameover
+// title (<-> guide) -> (help) -> play <-> paused -> gameover
 // Play is one continuous run: the moment a level's last rift is sealed the next level's rifts
 // start opening, marked only by its number flashing at the top of the screen, and every level
 // is harder than the one before.
@@ -43,7 +43,7 @@ music.enabled = store.music;
 scanner.voice = store.voice;
 setDifficulty(store.difficulty);
 
-const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, over: null, starting: false, flash: 0 };
+const ui = { state: 'title', t: 0, since: 0, buttons: [], help: null, over: null, starting: false, flash: 0, page: 0 };
 let run = null;
 let game = null;
 let drag = null;
@@ -147,6 +147,9 @@ function nextLevel() {
   setLevel(run.level);
   game.advance(levelDef(run.level));
   ui.flash = FLASH_TIME;
+  // Say so when this level adds a power-up to what can drop.
+  const fresh = KINDS.filter(k => POWERUPS[k].from === run.level).map(k => POWERUPS[k].name.toLowerCase());
+  if (fresh.length) scanner.show(`New power-up: ${fresh.join(' and ')}.`, true);
 }
 
 // On a phone, starting fills the screen and holds it in landscape where the browser allows
@@ -198,6 +201,8 @@ function doRecalibrate() {
 function act(id) {
   switch (id) {
     case 'start': start(); break;
+    case 'guide': ui.page = 0; setState('guide'); break;
+    case 'guide_next': ui.page = (ui.page + 1) % 3; break;
     case 'easy':
     case 'medium':
     case 'hard':
@@ -370,7 +375,7 @@ function tick(dt) {
     else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.
