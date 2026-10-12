@@ -24,9 +24,12 @@ function makeCrack() {
 }
 const STEAM = ['#f4f4f4', '#9ccdc4', '#6aa6a6'];
 
-// Beam colours as [glow, body, core]. It turns orange when the scanner is close to overheating.
-const BEAM_COOL = ['#0d4a4a', '#39e6d0', '#ffffff'];
-const BEAM_HOT = ['#4d2600', '#ff9a3a', '#ffffff'];
+// Beam colours as [glow, body, core]: red with a hot core, burning yellow-white when the
+// scanner is close to overheating.
+const BEAM_COOL = ['#6b0f1a', '#ff4a3a', '#ffe9a0'];
+const BEAM_HOT = ['#b55e0a', '#ffd23f', '#ffffff'];
+// The seal stream is the SEAL button's colours, as the beam is the FIRE button's.
+const STREAM = { glow: '#0d4a4a', body: '#39e6d0', core: '#ffffff', arc: '#7fb4ff', spark: '#ffd23f' };
 const BEAM_TIME = 0.16;
 
 export class Fx {
@@ -41,7 +44,9 @@ export class Fx {
     this.white = 0;
     this.steam = false;   // set by the weapon while overheated
     this.rings = [];      // expanding shockwaves: { x, y, t, colors }
-    this.sealing = 0;     // seal progress while the seal beam is on, set by the weapon
+    this.sealing = 0;     // seal progress while the seal stream is on, set by the weapon
+    this.sealX = 0;       // where the rift it is holding is on screen
+    this.sealY = 0;
     this.cracks = Array.from({ length: 8 }, makeCrack);
     this.cracked = 0;     // how many of them are showing
     this.crackAt = 0;
@@ -103,6 +108,11 @@ export class Fx {
     this.white = Math.max(0, this.white - dt);
     for (const r of this.rings) r.t += dt;
     if (this.rings.length && this.rings[0].t > 0.45) this.rings.shift();
+    // Sparks dragged into the rift the seal stream is closing.
+    if (this.sealing > 0 && Math.random() < 0.5) {
+      const a = Math.random() * 6.283, r = rand(18, 34);
+      this.add(this.sealX + Math.cos(a) * r, this.sealY + Math.sin(a) * r, -Math.cos(a) * r * 3, -Math.sin(a) * r * 3, 0.3, Math.random() < 0.5 ? STREAM.spark : STREAM.core);
+    }
     if (this.steam && Math.random() < 0.6) {
       this.add(view.cx + rand(-70, 70), view.y0 + view.h - 2, rand(-6, 6), -rand(20, 50), rand(0.4, 0.8), pick(STEAM), Math.random() < 0.3 ? 2 : 1);
     }
@@ -126,15 +136,7 @@ export class Fx {
       ring(r.x, r.y, 3 + k * 45, 0, 6.3, r.colors[n - 2] || r.colors[0]);
     }
     if (this.zapT > 0) line(this.zx, this.zy, view.cx, by, ((this.zapT * 40) | 0) & 1 ? '#ffe9a0' : '#ffa91f', 2);
-    if (this.sealing > 0) {
-      // The seal beam: a steady thread of stitches running up to the rift, nothing like a shot.
-      const cx = Math.round(view.cx), top = Math.round(view.cy), run = (performance.now() / 12) | 0;
-      for (let y = by - 1; y > top; y--) {
-        const d = (by - y + run) % 10;
-        if (d < 6) px(cx - (d < 3 ? 1 : 0), y, d < 3 ? 3 : 1, 1, d < 3 ? '#ffffff' : UI.c);
-      }
-      px(cx - 2, top - 2, 5, 5, ((run >> 2) & 1) ? '#ffffff' : UI.c);
-    }
+    if (this.sealing > 0) this.drawStream(by);
     if (this.bolt) this.drawBeam(this.bolt, by);
     if (this.red > 0) {
       ctx.globalAlpha = (this.red / 0.45) * 0.45;
@@ -146,6 +148,47 @@ export class Fx {
       px(x0, y0, w, h, '#ffffff');
       ctx.globalAlpha = 1;
     }
+  }
+
+  // The seal stream: a thick, writhing rope of energy from the scanner to the rift it is
+  // closing, with a second strand wound round it and arcs crackling off it, and a clamp of
+  // arcs at the rift that tightens as the seal completes. Nothing like the straight beam of a shot.
+  drawStream(by) {
+    const ctx = R.ctx, t = performance.now() / 1000, p = this.sealing;
+    const x0 = view.cx, x1 = this.sealX, y1 = Math.round(this.sealY), len = by - y1;
+    if (len < 4) return;
+    const at = y => {
+      const u = (by - y) / len, slack = Math.sin(u * Math.PI);
+      return x0 + (x1 - x0) * u + Math.sin(u * 9 - t * 16) * 5 * slack + Math.sin(u * 23 + t * 11) * 2 * slack;
+    };
+    for (let y = by - 1; y >= y1; y--) {
+      const u = (by - y) / len, x = Math.round(at(y)), w = 2 + Math.round(2 * (1 - u));
+      ctx.fillStyle = STREAM.glow;
+      ctx.fillRect(x - w - 1, y, w * 2 + 3, 1);
+      ctx.fillStyle = ((y + ((t * 60) | 0)) & 7) < 2 ? STREAM.core : STREAM.body;
+      ctx.fillRect(x - w, y, w * 2 + 1, 1);
+      ctx.fillStyle = STREAM.core;
+      ctx.fillRect(x, y, 1, 1);
+      // The second strand, winding round the first.
+      ctx.fillStyle = STREAM.arc;
+      ctx.fillRect(x + Math.round(Math.cos(u * 26 - t * 22) * (w + 3) * Math.sin(u * Math.PI)), y, 2, 1);
+    }
+    // Arcs jumping off the stream.
+    for (let i = 0; i < 3; i++) {
+      if (Math.random() < 0.45) continue;
+      const y = y1 + Math.random() * len, x = at(y), side = Math.random() < 0.5 ? -1 : 1;
+      const mx = x + side * rand(5, 11), my = y - rand(2, 7);
+      line(x, y, mx, my, STREAM.arc);
+      line(mx, my, mx + side * rand(2, 8), my - rand(1, 6), STREAM.core);
+    }
+    // The clamp at the rift: arcs that close in and spin faster as the seal completes.
+    const r = 22 - 13 * p, spin = t * (4 + 10 * p);
+    for (let i = 0; i < 3; i++) {
+      const a = spin + (i * Math.PI * 2) / 3;
+      ring(x1, y1, r + 1, a, a + 1.2, STREAM.glow, 3);
+      ring(x1, y1, r, a, a + 1.2, ((t * 12) | 0) & 1 ? STREAM.core : STREAM.spark, 2);
+    }
+    disc(x1, y1, 2 + Math.round(p * 2), STREAM.core);
   }
 
   // One straight beam from the bottom of the screen to the crosshair: wide where it leaves the

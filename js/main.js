@@ -375,7 +375,7 @@ function tick(dt) {
     else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, build: window.riftBuild, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.

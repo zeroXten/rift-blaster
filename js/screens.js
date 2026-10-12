@@ -3,7 +3,7 @@
 // (R.view) with the pixel font, inside the same casing as the game, and returns the buttons it
 // drew so main.js can hit-test taps.
 
-import { DIFFICULTY, UI, level } from './config.js';
+import { DIFFICULTY, UI, VERSION, level } from './config.js';
 import { R, blit, box, cameraFrame, debugBackdrop, px, reticle } from './render.js';
 import { drawText, drawTextS, wrapText } from './font.js';
 import { drawFrame } from './frame.js';
@@ -22,7 +22,7 @@ export const GUIDE_LENGTH = GUIDE_PAGES.length;
 const HOW_TO = [
   'Rifts open around the room. Arrows at the edge of the screen point to them: see SIGNS.',
   'Creatures come out of them. Dots at the edge of the screen show any you cannot see. Shoot each one with FIRE once it is clear of its rift.',
-  'Every creature you shoot weakens its rift: the bar under it drains. When it is empty, aim at the rift and hold SEAL.',
+  'Every creature you shoot weakens its rift: the bar under it drains. When it is empty, aim at the rift and hold SEAL: nothing can come through while you do.',
   'HEALTH is you: creatures that reach you take it. REALITY is the room: leaving a rift open once it can be sealed wears it down. Lose either and the run is over.',
   'Seal every rift to clear a level. Each level is harder than the last.',
 ];
@@ -69,14 +69,6 @@ function para(text, x, y, width, color = UI.c, align = 0.5) {
   return y + lines.length * 9;
 }
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-// "BUILD 12 OCT 14:32"
-function buildLabel(time) {
-  const d = new Date(time), two = n => String(n).padStart(2, '0');
-  return `BUILD ${d.getDate()} ${MONTHS[d.getMonth()]} ${two(d.getHours())}:${two(d.getMinutes())}`;
-}
-
 function heading(text, x, y, color, scale, align = 0.5) {
   drawText(text, x + scale, y + scale, '#3d060c', scale, align);
   drawText(text, x, y, color, scale, align);
@@ -102,8 +94,7 @@ const SCREENS = {
       : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 158, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST ${best.score}  LEVEL ${best.level || 1}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
-    // When the files now running were last changed on the server, in local time.
-    if (c.build) drawText(buildLabel(c.build), v.x + v.w - 5, v.y + v.h - 11, UI.mid, 1, 1);
+    drawText('V' + VERSION, v.x + v.w - 5, v.y + v.h - 11, UI.mid, 1, 1);
   },
 
   // How the game works, what the creatures are, and what the power-ups do: three pages.

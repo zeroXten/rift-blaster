@@ -22,27 +22,16 @@
   // phone's reload button does not override that for scripts, so a fresh deploy can keep showing
   // the old game. Before starting, ask the server about every module the game imports; unchanged
   // files cost one tiny request each, changed ones are replaced in the browser's cache.
-  //
-  // The same pass notes when the newest of those files was last changed on the server. The title
-  // screen shows that as the build, so it is easy to tell whether the latest version has loaded.
   const seen = new Set();
-  let newest = Date.parse(document.lastModified) || 0;
-  const check = url => fetch(url, { cache: 'no-cache' }).then(r => {
-    newest = Math.max(newest, Date.parse(r.headers.get('last-modified')) || 0);
-    return r.text();
-  });
   const refresh = url => {
     if (seen.has(url)) return null;
     seen.add(url);
-    return check(url).then(text =>
+    return fetch(url, { cache: 'no-cache' }).then(r => r.text()).then(text =>
       Promise.all([...text.matchAll(/from\s+'(\.[^']+)'/g)].map(m => refresh(new URL(m[1], url).href))));
   };
-  Promise.all([refresh(new URL('js/main.js', location.href).href), check('css/style.css')])
+  Promise.all([refresh(new URL('js/main.js', location.href).href), fetch('css/style.css', { cache: 'no-cache' })])
     .catch(() => {})
-    .then(() => {
-      window.riftBuild = newest;
-      return import('./js/main.js');
-    });
+    .then(() => import('./js/main.js'));
 </script>
 </body>
 </html>

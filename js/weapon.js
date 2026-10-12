@@ -54,7 +54,8 @@ export class Weapon {
     this.target = this.pick(game);
 
     // Sealing: while SEAL is held and a weakened, unblocked rift stays near the centre,
-    // progress builds. Letting go or looking away loses it.
+    // progress builds, and the stream holds the rift shut so nothing new comes through to
+    // interrupt it. Letting go or looking away loses it.
     let near = null, nearA = Infinity;
     for (const r of game.rifts) {
       if (r.sealed) continue;
@@ -69,6 +70,7 @@ export class Weapon {
         if (near.locked && !near.bossLock) scanner.say('locked');
       } else {
         this.seal += dt / this.sealTime;
+        near.grip = Math.max(0.01, Math.min(1, this.seal));
         if (this.seal >= 1) { near.seal(); this.rift = null; this.seal = 0; }
       }
     } else if ((this.grace -= dt) <= 0) {
@@ -78,6 +80,7 @@ export class Weapon {
     }
     const working = game.sealing && this.rift && !this.rift.blocked;
     game.fx.sealing = working ? Math.max(0.01, this.seal) : 0;
+    if (working) { game.fx.sealX = this.rift.p.x; game.fx.sealY = this.rift.p.y; }
     sealTone(working ? this.seal : 0);
   }
 

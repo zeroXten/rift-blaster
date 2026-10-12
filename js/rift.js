@@ -15,6 +15,7 @@ const KNOTS = 7, MID = KNOTS >> 1;
 const CRACK_RUSH = 4;      // how much faster a rift widens while it is still a crack
 const RESPITE = 3;         // seconds before the next arrival once a full rift has room again
 const QUICK = 1.2;         // seconds before the next arrival once all of a locked rift's creatures are gone
+const PUSHED_BACK = 1.5;   // seconds before a rift can send anything after the seal stream lets go of it
 const EAGER = 0.75;        // a rift that cannot be sealed yet sends its creatures this much sooner
 
 // The outline of one rift: a zig-zag spine with an uneven opening on either side of it, so it
@@ -279,6 +280,7 @@ export class Rift {
     this.sealed = false;
     this.sealAnim = 0;
     this.flare = 0;
+    this.grip = 0;            // seal progress while the seal stream is on this rift, set by the weapon
     this.p = {};
     this.hw = 3;
     this.hh = 20;
@@ -314,6 +316,15 @@ export class Rift {
       play(name, p.pan);
       if (!this.def.quiet) scanner.say(name);
       this.game.emit(name);
+    }
+
+    // The seal stream holds a rift shut: while it is on, nothing new can start through, and
+    // whatever was about to is pushed back a moment. The weapon renews the grip every frame.
+    const gripped = this.grip > 0;
+    this.grip = 0;
+    if (gripped && this.queue === 0) {
+      this.spawnT = Math.max(this.spawnT, PUSHED_BACK);
+      return;
     }
 
     if (this.queue > 0) {
@@ -388,14 +399,16 @@ export class Rift {
   draw() {
     if (!this.on || this.sealAnim > 0.45) return;
     // Opens with a quick stretch; implodes when sealed.
-    const k = this.sealed ? (1 - this.sealAnim / 0.45) ** 2 : Math.min(1, this.t * 3);
+    // It is squeezed narrower as the seal stream closes it.
+    const k = this.sealed ? (1 - this.sealAnim / 0.45) ** 2 : Math.min(1, this.t * 3) * (1 - 0.4 * this.grip);
     const ramp = DIMS[this.dim].ramp;
     // Flares a shade brighter for a moment after swallowing a shot.
     const lit = this.flare > 0 ? [ramp[1], ramp[2], ramp[3], '#ffffff'] : ramp;
     drawRift(this.style, this.p.x, this.p.y, (view.f / RIFT_DIST) * this.size, this.width, this.t,
       this.sealed ? SEAL_RAMP : lit, this.shape, k, this.size > 1);
     // Weak enough to seal: the same turning mark that its arrow carries when it is off screen.
-    if (!this.sealed && !this.locked) reticle(this.p.x, this.p.y, Math.min(Math.max(this.hw, this.hh) + 6, view.h * 0.42), this.t);
+    // Once the seal stream has hold of it, the stream's own clamp takes over.
+    if (!this.sealed && !this.locked && !this.grip) reticle(this.p.x, this.p.y, Math.min(Math.max(this.hw, this.hh) + 6, view.h * 0.42), this.t);
     // Strength gauge: how hard the other side is still holding the rift open. It drains as the
     // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.
     if (!this.sealed && this.lockKills) {

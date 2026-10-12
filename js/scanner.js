@@ -11,7 +11,7 @@ export const LINES = {
   breach: ['That rift is wide open now.', 'Rift at full width. Expect more of them.'],
   sealed: ['Sealed.', 'Rift closed.', 'Sealed. Next.'],
   locked: ['Too strong to seal. Shoot its creatures first.', 'Not yet. Weaken it first.'],
-  weak: ['That rift is weak. Hold SEAL on it.', 'Weak enough. Seal it.'],
+  weak: ['That rift is weak. Hold SEAL on it.', 'Weak enough. Seal it. The stream holds it shut.'],
   absorbed: ['Shots into a rift are lost.', 'Wait until it is clear of the rift.'],
   blocked: ['Something is arriving. Wait, then seal.'],
 
