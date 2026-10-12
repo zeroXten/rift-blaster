@@ -8,8 +8,9 @@ are on buttons under your left thumb. Levels run straight into one another and k
 harder.
 
 There are two ways to lose. **Health** is you: creatures that reach you take it, and the
-scanner's screen cracks as it goes. **Reality** is the room: every rift left open wears it
-down, fractures appear in the space around you, and sealing rifts mends it.
+scanner's screen cracks as it goes. **Reality** is the room: a rift left open once it is
+weak enough to seal wears it down, fractures appear in the space around you, and sealing rifts
+mends it.
 
 Plain HTML, CSS and JavaScript modules: no build step, no libraries, no backend, no asset files.
 Sprites, font, sound effects and music are all generated in code. See [SPEC.md](SPEC.md).

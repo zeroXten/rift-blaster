@@ -13,9 +13,9 @@ function makeCrack() {
   let x = side === 0 ? 0 : side === 1 ? 1 : Math.random(), y = side === 2 ? 0 : side === 3 ? 1 : Math.random();
   let ang = Math.atan2(0.5 - y, 0.5 - x) + rand(-0.6, 0.6);
   const points = [[x, y]];
-  for (let i = 3 + ((Math.random() * 2) | 0); i > 0; i--) {
+  for (let i = 4 + ((Math.random() * 3) | 0); i > 0; i--) {
     ang += rand(-0.7, 0.7);
-    const len = rand(0.04, 0.09);
+    const len = rand(0.05, 0.11);
     x += Math.cos(ang) * len;
     y += Math.sin(ang) * len * 1.8;
     points.push([x, y]);
@@ -205,13 +205,17 @@ export class Fx {
     const n = Math.min(this.cracks.length, Math.ceil((100 - health) / 12.5));
     if (n > this.cracked) this.crackAt = now;
     this.cracked = n;
-    const fresh = now - this.crackAt < 350;
+    // White on a dark outline, so they show against any room. The newest is drawn heavier
+    // for a moment, with a chip where it started.
+    const fresh = now - this.crackAt < 500;
     for (let i = 0; i < n; i++) {
-      const c = this.cracks[i], color = fresh && i === n - 1 ? '#ffffff' : '#9ccdc4';
-      for (let j = 1; j < c.length; j++) {
-        line(x0 + c[j - 1][0] * w + 1, y0 + c[j - 1][1] * h + 1, x0 + c[j][0] * w + 1, y0 + c[j][1] * h + 1, UI.k);
-        line(x0 + c[j - 1][0] * w, y0 + c[j - 1][1] * h, x0 + c[j][0] * w, y0 + c[j][1] * h, color);
-      }
+      const c = this.cracks[i], heavy = fresh && i === n - 1;
+      const at = j => [x0 + c[j][0] * w, y0 + c[j][1] * h];
+      for (let j = 1; j < c.length; j++) line(...at(j - 1), ...at(j), UI.k, heavy ? 5 : 3);
+      for (let j = 1; j < c.length; j++) line(...at(j - 1), ...at(j), '#ffffff', heavy ? 3 : 1);
+      const [sx, sy] = at(0);
+      px(sx - 3, sy - 3, 7, 7, UI.k);
+      px(sx - 2, sy - 2, 5, 5, heavy ? '#ffffff' : '#d5e6ff');
     }
     if (health < 30 && ((now / 300) | 0) & 1) {
       ctx.globalAlpha = 0.55;

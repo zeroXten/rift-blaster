@@ -14,6 +14,8 @@ const SEAL_RAMP = ['#6aa6a6', '#9ccdc4', '#f4f4f4', '#ffffff'];
 const KNOTS = 7, MID = KNOTS >> 1;
 const CRACK_RUSH = 4;      // how much faster a rift widens while it is still a crack
 const RESPITE = 3;         // seconds before the next arrival once a full rift has room again
+const QUICK = 1.2;         // seconds before the next arrival once all of a locked rift's creatures are gone
+const EAGER = 0.75;        // a rift that cannot be sealed yet sends its creatures this much sooner
 
 // The outline of one rift: a zig-zag spine with an uneven opening on either side of it, so it
 // reads as a fracture in the air (cracked glass, a lightning bolt) and never as a smooth oval.
@@ -320,7 +322,7 @@ export class Rift {
         this.game.spawn(this.queueType, this, { elite: st === 2 && Math.random() < 0.5 });
         this.emerging++;
         this.stagger = 0.45;
-        if (--this.queue === 0) this.spawnT = (DIM_SPAWN[this.dim]?.interval[Math.max(0, st - 1)] ?? 0) * level.spawn;
+        if (--this.queue === 0) this.spawnT = (DIM_SPAWN[this.dim]?.interval[Math.max(0, st - 1)] ?? 0) * level.spawn * (this.locked ? EAGER : 1);
       }
       return;
     }
@@ -331,6 +333,9 @@ export class Rift {
     // which is long enough to seal a rift whose doorway they have just cleared.
     const max = sp.max[st - 1], room = Math.min(max - this.alive, this.game.room());
     if (room <= 0) { this.spawnT = Math.max(this.spawnT, RESPITE); return; }
+    // A rift that still cannot be sealed does not keep the player waiting: once everything it
+    // sent has been dealt with, the next lot is close behind.
+    if (this.locked && this.alive === 0) this.spawnT = Math.min(this.spawnT, QUICK);
     this.spawnT -= dt;
     if (this.spawnT > 0) return;
     // Pick what arrives, from the types this level allows.

@@ -19,11 +19,16 @@ export const HEAT_PER_SHOT = 11;
 export const HEAT_DECAY = 26;        // % per second
 export const OVERHEAT_LOCK = 2;
 
-// Reality Integrity: how much of the room is still the room. Open rifts wear it down every
-// second they stay open, and a crowd of creatures adds to it; sealing a rift gives some back.
-export const STRAIN = [0, 0.45, 1.1];   // % per second for a rift that is a crack, open, wide open
-export const CROWD_FREE = 3;            // creatures in play before they add strain
-export const CROWD_STRAIN = 0.12;       // % per second for each creature beyond that
+// Reality Integrity: how much of the room is still the room. A rift does most of its harm
+// once it is weak enough to seal and is left open: that part is the player's to prevent. While
+// it is still too strong to seal it only leaks a little, and a crowd of creatures adds a
+// little more. Sealing a rift gives some back.
+export const STRAIN = {               // % per second for a rift that is a crack, open, wide open
+  locked: [0, 0.1, 0.35],             // still too strong to seal
+  ready: [0, 0.8, 1.3],               // could be sealed, and has not been
+};
+export const CROWD_FREE = 5;            // creatures in play before they add strain
+export const CROWD_STRAIN = 0.08;       // % per second for each creature beyond that
 export const SEAL_RESTORES = 7;         // % of reality given back by each rift sealed
 
 export const UI = {
@@ -57,8 +62,8 @@ export const level = { key: 'medium', n: 1 };
 // everything in an arc in front of the player, so a small child never has to turn around.
 export const DIFFICULTY = {
   easy:   { name: 'EASY',   ramp: 0.4, speed: 0.6, spawn: 0.8, alive: 2,  pack: -1, damage: 0.3, hold: 0.6, growth: 0.5, maxOpen: -2, tol: 4, sealAngle: 1.5, seal: 0.7, heat: 0.5, patience: 2,   score: 0.5, drops: 2.2, strain: 0.35, dodge: 0, arc: 35, linger: 1.7, flank: 1, spit: 0 },
-  medium: { name: 'MEDIUM', ramp: 0.8, speed: 0.9, spawn: 1.1, alive: 99, pack: 0,  damage: 0.8, hold: 0.9, growth: 0.9, maxOpen: 0,  tol: 1, sealAngle: 1.1, seal: 1,   heat: 0.9, patience: 1.2, score: 1,   drops: 1.2, strain: 0.8, dodge: 0.6, arc: 180, linger: 1.15, flank: 1.3, spit: 5.5 },
-  hard:   { name: 'HARD',   ramp: 1,   speed: 1,   spawn: 1,   alive: 99, pack: 0,  damage: 1,   hold: 1,   growth: 1,   maxOpen: 0,  tol: 0, sealAngle: 1,   seal: 1,   heat: 1,   patience: 1,   score: 1.5, drops: 1, strain: 1, dodge: 1, arc: 180, linger: 1, flank: 1.6, spit: 4.5 },
+  medium: { name: 'MEDIUM', ramp: 0.8, speed: 0.9, spawn: 1.1, alive: 99, pack: 0,  damage: 0.8, hold: 0.9, growth: 0.9, maxOpen: 0,  tol: 1, sealAngle: 1.1, seal: 1,   heat: 0.9, patience: 1.2, score: 1,   drops: 1.2, strain: 0.8, dodge: 0.6, arc: 180, linger: 1.15, flank: 1.2, spit: 5.5 },
+  hard:   { name: 'HARD',   ramp: 1,   speed: 1,   spawn: 1,   alive: 99, pack: 0,  damage: 1,   hold: 1,   growth: 1,   maxOpen: 0,  tol: 0, sealAngle: 1,   seal: 1,   heat: 1,   patience: 1,   score: 1.5, drops: 1, strain: 1, dodge: 1, arc: 180, linger: 1, flank: 1.35, spit: 4.5 },
 };
 
 // Every level is harder than the last, without limit: faster creatures in bigger groups,

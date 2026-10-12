@@ -8,6 +8,7 @@ import { UI } from './config.js';
 import { view } from './projection.js';
 import { px, tri } from './render.js';
 import { DIMS } from './sprites.js';
+import { NEAR } from './creatures/base.js';
 
 // The point where the direction toward a projected target leaves the screen, `inset` pixels in
 // from the edge, and that direction as a unit vector.
@@ -47,14 +48,14 @@ function dots(game) {
   const placed = [], flash = ((game.t * 8) | 0) & 1;
   for (const c of game.creatures) {
     if (c.state !== 'active' || c.on || c.pods) continue;
-    const e = edge(c.p, 5), near = c.r < 4 && c.def.damage > 0;
+    const e = edge(c.p, 5), near = c.r < NEAR && c.def.damage > 0;
     let { x, y } = e;
     for (let tries = 0; tries < 8 && placed.some(q => Math.abs(q.x - x) < 8 && Math.abs(q.y - y) < 8); tries++) {
       x -= e.dx * 8;
       y -= e.dy * 8;
     }
     placed.push({ x, y });
-    const s = near ? 3 : 2;
+    const s = near ? 4 : 2;
     px(x - s - 1, y - s - 1, s * 2 + 3, s * 2 + 3, UI.k);
     px(x - s, y - s, s * 2 + 1, s * 2 + 1, near ? (flash ? UI.red : '#ffffff') : DIMS[c.dim].ramp[2]);
   }
@@ -70,7 +71,9 @@ export function drawIndicators(game) {
     if (rift.sealed || rift.on) continue;
     const st = rift.stage, ramp = DIMS[rift.dim].ramp;
     // Wider rifts get bigger arrows that blink faster. A doubled arrow means "behind you".
+    // One that is ready to seal, and so is costing reality, strobes white and cyan.
     const blink = st > 0 && ((t * (st + 1) * 2) | 0) & 1;
-    arrow(rift.p, blink ? '#ffffff' : ramp[2], 6 + st * 2, t, !rift.p.front);
+    const color = !rift.locked ? (((t * 10) | 0) & 1 ? '#ffffff' : UI.c) : blink ? '#ffffff' : ramp[2];
+    arrow(rift.p, color, (rift.locked ? 6 : 8) + st * 2, t, !rift.p.front);
   }
 }

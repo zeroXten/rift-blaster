@@ -21,7 +21,7 @@ const HOW_TO = [
   'Rifts open around the room. Arrows at the edge of the screen point to them.',
   'Creatures come out of them. Dots at the edge of the screen show any you cannot see. Shoot each one with FIRE once it is clear of its rift.',
   'Every creature you shoot weakens its rift: the bar under it drains. When it is empty, aim at the rift and hold SEAL.',
-  'HEALTH is you: creatures that reach you take it, and the screen cracks. REALITY is the room: open rifts wear it down, and the room fractures. Lose either and the run is over.',
+  'HEALTH is you: creatures that reach you take it. REALITY is the room: leaving a rift open once it can be sealed wears it down. Lose either and the run is over.',
   'Seal every rift to clear a level. Each level is harder than the last.',
 ];
 const BESTIARY = [

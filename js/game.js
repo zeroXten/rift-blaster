@@ -46,6 +46,7 @@ export class Game {
     this.banner = null;       // { text, color, t }: the name of a power-up just taken
     this.dropT = -99;
     this.sinceDrop = 0;
+    this.warnT = 0;           // when the last "one is close behind you" warning sounded
     this.pending = def.rifts.slice().sort((a, b) => a.at - b.at);
     this.total = this.pending.length;
     this.stats = { shots: 0, hits: 0, kills: 0, sealed: 0 };
@@ -310,7 +311,8 @@ export class Game {
     }
   }
 
-  // Open rifts wear reality down, wider ones faster, and so does a crowd of creatures. It
+  // Open rifts wear reality down: a little while they are too strong to seal, a lot once they
+  // could be sealed and are left open, and more when wide open. A big crowd adds to it. It
   // mends slowly while nothing is open.
   strain(dt) {
     if (this.ending) return;
@@ -318,8 +320,8 @@ export class Game {
     for (const r of this.rifts) {
       if (r.sealed) continue;
       open++;
-      // The boss's rift has to stay open for the whole fight, so it strains far less.
-      rate += STRAIN[r.stage] * (r.def.boss ? 0.25 : 1);
+      // The boss's rift has to stay open for the whole fight, so it strains less.
+      rate += (r.locked ? STRAIN.locked : STRAIN.ready)[r.stage] * (r.def.boss ? 0.5 : 1);
     }
     let live = 0;
     for (const c of this.creatures) if (!c.pods && c.state === 'active') live++;

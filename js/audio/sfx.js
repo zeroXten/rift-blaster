@@ -238,6 +238,11 @@ const SOUNDS = {
   },
 
   // Player
+  // Something closing in from out of sight
+  warn() {
+    tone({ f: 1320, dur: 0.06, type: 'square', vol: 0.13 });
+    tone({ f: 1320, dur: 0.06, delay: 0.1, type: 'square', vol: 0.13 });
+  },
   damage() {
     tone({ f: 160, f2: 50, dur: 0.3, type: 'sawtooth', vol: 0.3 });
     tone({ f: 233, f2: 120, dur: 0.25, type: 'square', vol: 0.12 });

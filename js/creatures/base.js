@@ -8,6 +8,8 @@ import { DIMS, getSprite } from '../sprites.js';
 import { drawBulge } from '../rift.js';
 import { play } from '../audio/sfx.js';
 
+export const NEAR = 5.5;      // closer than this and out of sight, a creature is flagged as about to arrive
+
 export class Creature {
   // sprite, size (world units tall), hp, damage (health lost when it reaches the player), emerge
   // (seconds). minor marks a projectile: shooting it does not weaken its rift or drop anything.
@@ -80,6 +82,12 @@ export class Creature {
       }
     }
     if (this.state !== 'dying' && this.counts()) this.rift.alive++;
+    // One warning sound, from its side, as it closes in out of sight.
+    if (!this.warned && this.state === 'active' && !this.on && this.r < NEAR && this.def.damage && this.game.t - this.game.warnT > 0.6) {
+      this.warned = true;
+      this.game.warnT = this.game.t;
+      play('warn', this.p.pan);
+    }
     this.place();
   }
 
@@ -142,8 +150,11 @@ export class Creature {
   }
 
   // Reached the player.
+  // Reached the player. It is spent either way, so it still counts against its rift: taking
+  // the hit is a way, a costly one, of wearing a rift down.
   reach() {
     this.game.damage(this.def.damage, this);
+    if (!this.def.minor) this.rift.kills++;
     this.dead = true;
   }
 
