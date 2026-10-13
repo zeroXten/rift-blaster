@@ -3,6 +3,7 @@
 // How hard a level is (speed, damage, group sizes) is the scaling in config.js; this file says
 // what is in it.
 
+import { level } from './config.js';
 import { rand } from './util.js';
 
 export const DIM_SPAWN = {
@@ -50,6 +51,13 @@ const TUTORIAL = {
   blocked: 'Something is arriving. Wait for it, then seal.',
 };
 
+// Where rifts close themselves, the tutorial does not mention sealing.
+const TUTORIAL_AUTO = {
+  riftSeen: 'That is a rift. Shoot what comes out of it.',
+  unlocked: 'The rift is weak. It will close itself.',
+  firstKill: 'Good. Each one you shoot weakens the rift.',
+};
+
 // Lays out level n. Returns:
 //   rifts   in the order they open. Fields: at (seconds into the level; rifts sharing a time
 //           open together), dim, yaw / pitch in degrees relative to where the player is facing
@@ -62,7 +70,7 @@ export function levelDef(n) {
   const boss = n % 5 === 0;
   const dims = DIM_ORDER.slice(0, Math.min(4, n));
   const types = n >= 4 ? null : Object.keys(FRESH).filter(k => k <= n).flatMap(k => FRESH[k]);
-  const def = { n, boss, types, hints: n === 1 ? TUTORIAL : null, noDrops: n === 1 };
+  const def = { n, boss, types, hints: n === 1 ? (level.auto ? { ...TUTORIAL, ...TUTORIAL_AUTO } : TUTORIAL) : null, noDrops: n === 1 };
 
   if (n === 1) {
     // One rift, off to the side so the arrow has something to teach.

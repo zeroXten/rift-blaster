@@ -26,6 +26,8 @@ const HOW_TO = [
   'HEALTH is you: creatures that reach you take it. REALITY is the room: leaving a rift open once it can be sealed wears it down. Lose either and the run is over.',
   'Seal every rift to clear a level. Each level is harder than the last.',
 ];
+// The third paragraph on the setting where rifts close themselves.
+const HOW_TO_AUTO = 'Every creature you shoot weakens its rift: the bar under it drains. When it is empty the rift closes itself.';
 const BESTIARY = [
   { name: 'Yrrk', sprite: 'yrrk', dim: 'vesh', note: 'Corkscrewing packs.' },
   { name: 'Zik', sprite: 'zik', dim: 'vesh', note: 'Tiny, fast, erratic.' },
@@ -84,8 +86,9 @@ const SCREENS = {
     heading('BLASTER', lx, v.y + 40, UI.c, 3);
     drawTextS('INTERDIMENSIONAL PEST CONTROL', lx, v.y + 68, UI.yel, 1, 0.5);
     para(`"${LINES.permission[0]}"`, lx, v.y + 84, lw - 10, UI.w);
-    Object.keys(DIFFICULTY).forEach((key, i) => {
-      button(key, DIFFICULTY[key].name, lx + (i - 1) * 60, v.y + 106, { w: 56, h: 17, on: key === level.key, dim: true });
+    const keys = Object.keys(DIFFICULTY);
+    keys.forEach((key, i) => {
+      button(key, DIFFICULTY[key].name, lx + (i - (keys.length - 1) / 2) * 49, v.y + 106, { w: 46, h: 17, on: key === level.key, dim: true });
     });
     button('start', c.starting ? 'STAND BY' : 'START', lx - 44, v.y + 128, { primary: true, h: 24, w: 98 });
     button('guide', 'HOW TO PLAY', lx + 53, v.y + 128, { h: 24, w: 84 });
@@ -94,7 +97,9 @@ const SCREENS = {
       : 'IPHONE: SOUND IS OFF WHILE THE RINGER SWITCH IS SET TO SILENT.', lx, v.y + 158, lw - 10, UI.mid);
     const best = c.store.scores[0];
     if (best) drawText(`BEST ${best.score}  LEVEL ${best.level || 1}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
-    drawText('V' + VERSION, v.x + v.w - 5, v.y + v.h - 11, UI.mid, 1, 1);
+    // The version number is also a hidden switch: see main.js.
+    drawText('V' + VERSION, v.x + v.w - 5, v.y + v.h - 11, c.god ? UI.yel : UI.mid, 1, 1);
+    buttons.push({ id: 'version', x: v.x + v.w - 62, y: v.y + v.h - 24, w: 62, h: 24, quiet: true });
   },
 
   // How the game works, what the creatures are, and what the power-ups do: three pages.
@@ -104,7 +109,7 @@ const SCREENS = {
     heading(GUIDE_PAGES[page], mx, v.y + 8, UI.c, 2);
     let y = v.y + 30;
     if (page === 0) {
-      for (const text of HOW_TO) y = para(text, v.x + 10, y, v.w - 20, UI.w, 0) + 4;
+      HOW_TO.forEach((text, i) => { y = para(level.auto && i === 2 ? HOW_TO_AUTO : text, v.x + 10, y, v.w - 20, UI.w, 0) + 4; });
     } else if (page === 1) {
       // Everything that appears around the edge of the screen, drawn as it is in play.
       const green = DIMS.vesh.ramp[2], t = c.t, ix = v.x + 22;

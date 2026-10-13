@@ -3,7 +3,7 @@
 // and one button per power-up; the right grip has SEAL and FIRE under the right thumb. It is
 // drawn over the edges of the world, so anything that strays off the screen disappears behind it.
 
-import { UI } from './config.js';
+import { UI, level } from './config.js';
 import { R, blit, box, disc, px, ring } from './render.js';
 import { drawText } from './font.js';
 import { fullscreen } from './fullscreen.js';
@@ -39,10 +39,11 @@ export function gauges() {
 // What a touch at canvas point p lands on: 'fire', 'seal', 'pause', 'recal', 'full' (the
 // full-screen key, which works on every screen), 'slot:<kind>' for a power-up button, 'case'
 // (dead casing), or null for the screen itself. Touch targets are larger than the drawn
-// controls: the whole right grip is SEAL above and FIRE below.
+// controls: the whole right grip is SEAL above and FIRE below, or all FIRE on the setting where
+// rifts close themselves and there is no SEAL.
 export function frameHit(p) {
   const v = R.view;
-  if (p.x >= v.x + v.w) return p.y < R.h * 0.44 ? 'seal' : 'fire';
+  if (p.x >= v.x + v.w) return !level.auto && p.y < R.h * 0.44 ? 'seal' : 'fire';
   if (p.x < v.x) {
     const y = p.y - v.y;
     if (y < 19) return 'pause';
@@ -84,7 +85,7 @@ export function drawFrame({ live = false, pressed = false, sealing = false, hot 
 
   // Grip ridges on the right, around the buttons.
   for (let y = v.y + 6; y < vb - 24; y += 3) {
-    if (Math.abs(y - c.fire.y) > c.fire.r + 7 && Math.abs(y - c.seal.y) > c.seal.r + 7) px(vr + 7, y, w - vr - 12, 1, GROOVE);
+    if (Math.abs(y - c.fire.y) > c.fire.r + 7 && (level.auto || Math.abs(y - c.seal.y) > c.seal.r + 7)) px(vr + 7, y, w - vr - 12, 1, GROOVE);
   }
   for (const [x, y] of [[3, 3], [w - 6, 3], [3, h - 6], [w - 6, h - 6]]) {
     px(x, y, 3, 3, DARK);
@@ -141,8 +142,8 @@ export function drawFrame({ live = false, pressed = false, sealing = false, hot 
     if (n) drawText(n, s.x + 12, s.y + 18, UI.w, 1, 0.5);
   }
 
-  // Right grip: SEAL above, FIRE below, and the status light.
-  button(c.seal, sealing, live ? '#0d4a4a' : '#0a2c2c', live ? '#1f8f86' : '#124845', '#9ccdc4', 'SEAL', live ? '#05282a' : '#0a2c2c');
+  // Right grip: SEAL above (where the difficulty has one), FIRE below, and the status light.
+  if (!level.auto) button(c.seal, sealing, live ? '#0d4a4a' : '#0a2c2c', live ? '#1f8f86' : '#124845', '#9ccdc4', 'SEAL', live ? '#05282a' : '#0a2c2c');
   if (hot) button(c.fire, pressed, '#47101a', blink ? '#93282b' : '#6b1a22', '#93282b', 'HOT', '#f0a07a');
   else button(c.fire, pressed, live ? '#99101c' : '#47101a', live ? '#f02a2a' : '#6b1a22', '#ff9a7a', 'FIRE', '#3d060c');
   drawText('RB-1', vr + 8, vb - 18, LIGHT);

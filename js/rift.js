@@ -15,6 +15,7 @@ const KNOTS = 7, MID = KNOTS >> 1;
 const CRACK_RUSH = 4;      // how much faster a rift widens while it is still a crack
 const RESPITE = 3;         // seconds before the next arrival once a full rift has room again
 const QUICK = 1.2;         // seconds before the next arrival once all of a locked rift's creatures are gone
+const AUTO_SEAL = 0.8;     // seconds a weakened rift takes to close itself, where the difficulty has rifts do that
 const PUSHED_BACK = 1.5;   // seconds before a rift can send anything after the seal stream lets go of it
 const EAGER = 0.75;        // a rift that cannot be sealed yet sends its creatures this much sooner
 
@@ -281,6 +282,7 @@ export class Rift {
     this.sealAnim = 0;
     this.flare = 0;
     this.grip = 0;            // seal progress while the seal stream is on this rift, set by the weapon
+    this.autoT = 0;
     this.p = {};
     this.hw = 3;
     this.hh = 20;
@@ -317,6 +319,15 @@ export class Rift {
       if (!this.def.quiet) scanner.say(name);
       this.game.emit(name);
     }
+
+    // On the easiest setting a rift closes itself a moment after it has been weakened enough,
+    // and sends nothing more in the meantime.
+    if (level.auto && !this.blocked) {
+      if ((this.autoT += dt) >= AUTO_SEAL) { this.seal(); return; }
+      this.spawnT = Math.max(this.spawnT, 1);
+      return;
+    }
+    this.autoT = 0;
 
     // The seal stream holds a rift shut: while it is on, nothing new can start through, and
     // whatever was about to is pushed back a moment. The weapon renews the grip every frame.
@@ -408,7 +419,7 @@ export class Rift {
       this.sealed ? SEAL_RAMP : lit, this.shape, k, this.size > 1);
     // Weak enough to seal: the same turning mark that its arrow carries when it is off screen.
     // Once the seal stream has hold of it, the stream's own clamp takes over.
-    if (!this.sealed && !this.locked && !this.grip) reticle(this.p.x, this.p.y, Math.min(Math.max(this.hw, this.hh) + 6, view.h * 0.42), this.t);
+    if (!this.sealed && !this.locked && !this.grip && !level.auto) reticle(this.p.x, this.p.y, Math.min(Math.max(this.hw, this.hh) + 6, view.h * 0.42), this.t);
     // Strength gauge: how hard the other side is still holding the rift open. It drains as the
     // rift's creatures are shot; once empty the rift can be sealed, and the gauge blinks to say so.
     if (!this.sealed && this.lockKills) {

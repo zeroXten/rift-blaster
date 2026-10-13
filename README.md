@@ -87,9 +87,10 @@ These can only be judged with the phone in your hand:
 - Reality: how fast open rifts and crowds wear it down is `STRAIN` and its neighbours in
   `js/config.js`.
 - Difficulty: how each level gets harder than the last is `setLevel` at the bottom of
-  `js/config.js`, and the easy / medium / hard picker is the table of multipliers above it
-  (easy is meant for small children: its `arc` keeps everything within 35° of straight
-  ahead, so there is no turning around). What a level contains is `levelDef` in `js/levels.js`;
+  `js/config.js`, and the easy / normal / hard / insane picker is the table of multipliers
+  above it. Easy is meant for small children: everything stays within 35° of straight ahead,
+  and rifts close themselves so there is no SEAL button. Normal is the full game at a gentle
+  pace. What a level contains is `levelDef` in `js/levels.js`;
   damage and speed are in each creature file.
 - Variety: which creatures each dimension sends, and how often, is the `spawns` list in
   `js/levels.js`; power-up types, the level each one first appears on, how long they last and how often they

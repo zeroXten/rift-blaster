@@ -89,7 +89,7 @@ export function drawHud(game) {
     ring(cx, cy, 15, 0, 6.3, UI.k, 2);
     ring(cx, cy, 15, 0, 6.3, ready ? (blink || game.sealing ? UI.w : UI.dim) : blink ? UI.red : UI.dim);
     if (wp.seal > 0) ring(cx, cy, 15, -Math.PI / 2, -Math.PI / 2 + wp.seal * Math.PI * 2, UI.w, 2);
-    const label = rift.locked ? (rift.bossLock ? 'LOCKED' : 'TOO STRONG') : !ready ? 'WAIT' : game.sealing ? 'SEALING' : 'HOLD SEAL';
+    const label = rift.locked ? (rift.bossLock ? 'LOCKED' : 'TOO STRONG') : !ready ? 'WAIT' : level.auto ? 'CLOSING' : game.sealing ? 'SEALING' : 'HOLD SEAL';
     drawTextS(label, cx, cy + 22, ready ? UI.w : UI.red, 1, 0.5);
   } else if (game.sealing) {
     drawTextS('AIM AT A RIFT', cx, cy + 22, UI.mid, 1, 0.5);

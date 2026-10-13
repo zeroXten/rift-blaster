@@ -4,7 +4,7 @@
 // start opening, marked only by its number flashing at the top of the screen, and every level
 // is harder than the one before.
 
-import { FOV_LONG, UI, level, setDifficulty, setLevel } from './config.js';
+import { DIFFICULTY, FOV_LONG, UI, level, setDifficulty, setLevel } from './config.js';
 import { R, initRender, px } from './render.js';
 import { DEG, qAxis, setView, view } from './projection.js';
 import {
@@ -51,6 +51,10 @@ let firePointer = null;       // the finger holding FIRE, for rapid fire
 let sealPointer = null;       // the finger holding SEAL
 let autoFull = true;          // go full screen when a run starts, until the player leaves it
 let toast = null;
+// The hidden override: five quick taps on the version number on the title screen switch it on
+// or off. While it is on nothing hurts, reality holds, and every power-up is always to hand.
+let god = false;
+const taps = { n: 0, at: 0 };
 let last = performance.now();
 let fps = 60;
 
@@ -130,7 +134,7 @@ function begin() {
 // Starts a run, or another attempt at the level it was lost on, with everything restored.
 function startLevel() {
   setLevel(run.level);
-  game = new Game(levelDef(run.level), { inv: run.inv });
+  game = new Game(levelDef(run.level), { inv: run.inv, god });
   ui.flash = FLASH_TIME;
   firePointer = sealPointer = null;
   setState('play');
@@ -143,7 +147,7 @@ function nextLevel() {
   run.score += Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.health + game.reality) * 3) * level.score);
   run.checkpoint = run.score;
   run.level++;
-  recordScore(store, run);
+  if (!god) recordScore(store, run);
   setLevel(run.level);
   game.advance(levelDef(run.level));
   ui.flash = FLASH_TIME;
@@ -178,7 +182,7 @@ function keepAwake() {
 
 function gameOver() {
   run.kills += game.stats.kills;
-  recordScore(store, run);
+  if (!god) recordScore(store, run);
   const cause = game.cause || 'health';
   ui.over = { level: run.level, score: run.score, kills: run.kills, cause, comment: pick(LINES[cause === 'reality' ? 'collapsed' : 'gameover']) };
   setState('gameover');
@@ -203,13 +207,18 @@ function act(id) {
     case 'start': start(); break;
     case 'guide': ui.page = 0; setState('guide'); break;
     case 'guide_next': ui.page = (ui.page + 1) % GUIDE_LENGTH; break;
-    case 'easy':
-    case 'medium':
-    case 'hard':
-      setDifficulty(id);
-      store.difficulty = id;
-      saveStore(store);
+    case 'version': {
+      const now = performance.now();
+      taps.n = now - taps.at < 1200 ? taps.n + 1 : 1;
+      taps.at = now;
+      if (taps.n >= 5) {
+        taps.n = 0;
+        god = !god;
+        play('pickup');
+        say(god ? 'Override accepted. Nothing can hurt you.' : 'Override off.');
+      }
       break;
+    }
     // Another go at the level that was lost, with the score as it stood when that level began.
     case 'retry': run.score = run.checkpoint; startLevel(); break;
     case 'resume': setState('play'); break;
@@ -225,6 +234,11 @@ function act(id) {
     // Fallbacks from the permissions help screen.
     case 'drag': startDebug(); begin(); break;
     case 'nocam': begin(); break;
+    default:
+      if (!DIFFICULTY[id]) break;
+      setDifficulty(id);
+      store.difficulty = id;
+      saveStore(store);
   }
 }
 
@@ -246,6 +260,7 @@ function pullTrigger(id) {
 
 // SEAL only does anything while it is held.
 function holdSeal(id) {
+  if (level.auto) return;      // rifts close themselves on this setting
   sealPointer = id;
   game.sealing = true;
 }
@@ -303,7 +318,7 @@ canvas.addEventListener('click', e => {
   if (frameHit(p) === 'full') { play('ui'); toggleFullscreen(); return; }
   if (ui.state === 'play' || performance.now() - ui.since < 300) return;
   const b = ui.buttons.find(b => inside(b, p));
-  if (b) { play('ui'); act(b.id); }
+  if (b) { if (!b.quiet) play('ui'); act(b.id); }
 });
 
 // Keyboard: Space fires, E seals, 1-5 use the power-ups in the order of their buttons.
@@ -375,7 +390,7 @@ function tick(dt) {
     else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, god, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.

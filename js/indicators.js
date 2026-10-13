@@ -8,7 +8,7 @@
 //   plus           a power-up, in its own colour
 // The shapes are exported so the how-to-play guide can show them.
 
-import { UI } from './config.js';
+import { UI, level } from './config.js';
 import { view } from './projection.js';
 import { px, reticle, tri } from './render.js';
 import { DIMS } from './sprites.js';
@@ -89,6 +89,6 @@ export function drawIndicators(game) {
     const size = 6 + rift.stage * 2, e = edge(rift.p, 10), pulse = Math.sin(t * 8) * 1.5;
     const x = e.x + e.dx * pulse, y = e.y + e.dy * pulse;
     arrowAt(x, y, e.dx, e.dy, DIMS[rift.dim].ramp[2], size, !rift.p.front);
-    if (!rift.locked) reticle(x - e.dx * size * 0.6, y - e.dy * size * 0.6, size + 5, t);
+    if (!rift.locked && !level.auto) reticle(x - e.dx * size * 0.6, y - e.dy * size * 0.6, size + 5, t);
   }
 }

@@ -2,11 +2,14 @@
 // every access is wrapped and the game carries on without it.
 
 const KEY = 'riftblaster.v1';
-const DEFAULTS = { scores: [], music: true, voice: true, difficulty: 'medium' };
+const DEFAULTS = { scores: [], music: true, voice: true, difficulty: 'normal' };
 
 export function loadStore() {
   try {
-    return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    const store = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    // What used to be called MEDIUM is now HARD.
+    if (store.difficulty === 'medium') store.difficulty = 'hard';
+    return store;
   } catch {
     return { ...DEFAULTS };
   }

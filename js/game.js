@@ -26,8 +26,10 @@ import { clamp, rand, vibrate } from './util.js';
 const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
 export class Game {
-  // def is a level from levels.js; inv is the power-ups held, by kind.
-  constructor(def, { inv }) {
+  // def is a level from levels.js; inv is the power-ups held, by kind. god is the hidden
+  // override: nothing hurts, reality holds, and every power-up is always available.
+  constructor(def, { inv, god = false }) {
+    this.god = god;
     this.def = def;
     this.t = 0;
     this.health = 100;
@@ -144,7 +146,7 @@ export class Game {
     this.stats.kills++;
     if (creature.def.minor) return;      // a shot-down projectile: nothing more comes of it
     const rift = creature.rift;
-    if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.def.hints) scanner.say('weak', true);
+    if (rift.lockKills && rift.kills === rift.lockKills && !rift.sealed && !this.def.hints && !level.auto) scanner.say('weak', true);
     this.emit('firstKill');
     if (++this.streak % 6 === 0) scanner.say('streak');
     if (this.rifts.some(r => r.lockKills && r.kills === r.lockKills)) this.emit('unlocked');
@@ -194,7 +196,7 @@ export class Game {
     if (this.ending) return;
     if (!this.inv[kind]) { play('denied'); scanner.say('empty'); return; }
     if (kind === 'health' && this.health >= 100) { play('denied'); scanner.say('full'); return; }
-    this.inv[kind]--;
+    if (!this.god) this.inv[kind]--;
     this.banner = { text: def.name, color: def.color, t: 1.4 };
     play('pickup');
     vibrate(30);
@@ -242,7 +244,7 @@ export class Game {
 
   damage(amount, source) {
     if (this.ending) return;
-    this.health = Math.max(0, this.health - amount * level.damage);
+    if (!this.god) this.health = Math.max(0, this.health - amount * level.damage);
     this.streak = 0;
     this.fx.hurt();
     play('damage', source?.p.pan);
@@ -257,6 +259,7 @@ export class Game {
 
   update(dt) {
     this.t += dt;
+    if (this.god) for (const kind in this.inv) this.inv[kind] = MAX_HELD;
 
     // Open the next scheduled rift, or sooner if the player has had nothing to do for a few seconds.
     const open = this.rifts.reduce((n, r) => n + !r.sealed, 0);
@@ -316,6 +319,7 @@ export class Game {
   // mends slowly while nothing is open.
   strain(dt) {
     if (this.ending) return;
+    if (this.god) { this.reality = 100; return; }
     let rate = 0, open = 0;
     for (const r of this.rifts) {
       if (r.sealed) continue;
