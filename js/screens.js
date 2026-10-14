@@ -98,7 +98,7 @@ const SCREENS = {
     const best = c.store.scores[0];
     if (best) drawText(`BEST ${best.score}  LEVEL ${best.level || 1}`, lx, v.y + v.h - 12, UI.yel, 1, 0.5);
     // The version number is also a hidden switch: see main.js.
-    drawText('V' + VERSION, v.x + v.w - 5, v.y + v.h - 11, c.god ? UI.yel : UI.mid, 1, 1);
+    drawText('V' + VERSION, v.x + v.w - 5, v.y + v.h - 11, [UI.mid, '#ff9a2a', UI.red][c.cheat || 0], 1, 1);
     buttons.push({ id: 'version', x: v.x + v.w - 62, y: v.y + v.h - 24, w: 62, h: 24, quiet: true });
   },
 

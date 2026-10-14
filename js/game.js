@@ -26,10 +26,11 @@ import { clamp, rand, vibrate } from './util.js';
 const BLAST = 35 * DEG;      // a grenade takes out everything within this angle of it
 
 export class Game {
-  // def is a level from levels.js; inv is the power-ups held, by kind. god is the hidden
-  // override: nothing hurts, reality holds, and every power-up is always available.
-  constructor(def, { inv, god = false }) {
-    this.god = god;
+  // def is a level from levels.js; inv is the power-ups held, by kind. cheat is the hidden
+  // override: 1 keeps every power-up always available, 2 also means nothing hurts and reality holds.
+  constructor(def, { inv, cheat = 0 }) {
+    this.stocked = cheat >= 1;
+    this.god = cheat >= 2;
     this.def = def;
     this.t = 0;
     this.health = 100;
@@ -196,7 +197,7 @@ export class Game {
     if (this.ending) return;
     if (!this.inv[kind]) { play('denied'); scanner.say('empty'); return; }
     if (kind === 'health' && this.health >= 100) { play('denied'); scanner.say('full'); return; }
-    if (!this.god) this.inv[kind]--;
+    if (!this.stocked) this.inv[kind]--;
     this.banner = { text: def.name, color: def.color, t: 1.4 };
     play('pickup');
     vibrate(30);
@@ -259,7 +260,7 @@ export class Game {
 
   update(dt) {
     this.t += dt;
-    if (this.god) for (const kind in this.inv) this.inv[kind] = MAX_HELD;
+    if (this.stocked) for (const kind in this.inv) this.inv[kind] = MAX_HELD;
 
     // Open the next scheduled rift, or sooner if the player has had nothing to do for a few seconds.
     const open = this.rifts.reduce((n, r) => n + !r.sealed, 0);

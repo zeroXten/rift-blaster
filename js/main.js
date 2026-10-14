@@ -51,10 +51,11 @@ let firePointer = null;       // the finger holding FIRE, for rapid fire
 let sealPointer = null;       // the finger holding SEAL
 let autoFull = true;          // go full screen when a run starts, until the player leaves it
 let toast = null;
-// The hidden override: five quick taps on the version number on the title screen switch it on
-// or off. While it is on nothing hurts, reality holds, and every power-up is always to hand.
-let god = false;
-const taps = { n: 0, at: 0 };
+// The hidden override, from quick taps on the version number on the title screen: five give
+// every power-up, always to hand (the version turns orange); three more, then or later, also
+// stop health and reality falling (red). Five quick taps on red switch it all off.
+let cheat = 0;
+const taps = { n: 0, at: 0, from: 0 };
 let last = performance.now();
 let fps = 60;
 
@@ -135,7 +136,7 @@ function begin() {
 // Starts a run, or another attempt at the level it was lost on, with everything restored.
 function startLevel() {
   setLevel(run.level);
-  game = new Game(levelDef(run.level), { inv: run.inv, god });
+  game = new Game(levelDef(run.level), { inv: run.inv, cheat });
   ui.flash = FLASH_TIME;
   firePointer = sealPointer = null;
   setState('play');
@@ -148,7 +149,7 @@ function nextLevel() {
   run.score += Math.round((s.kills * 25 + s.sealed * 150 + Math.round(game.health + game.reality) * 3) * level.score);
   run.checkpoint = run.score;
   run.level++;
-  if (!god) recordScore(store, run);
+  if (!cheat) recordScore(store, run);
   setLevel(run.level);
   game.advance(levelDef(run.level));
   ui.flash = FLASH_TIME;
@@ -183,7 +184,7 @@ function keepAwake() {
 
 function gameOver() {
   run.kills += game.stats.kills;
-  if (!god) recordScore(store, run);
+  if (!cheat) recordScore(store, run);
   const cause = game.cause || 'health';
   ui.over = { level: run.level, score: run.score, kills: run.kills, cause, comment: pick(LINES[cause === 'reality' ? 'collapsed' : 'gameover']) };
   setState('gameover');
@@ -212,11 +213,15 @@ function act(id) {
       const now = performance.now();
       taps.n = now - taps.at < 1200 ? taps.n + 1 : 1;
       taps.at = now;
-      if (taps.n >= 5) {
-        taps.n = 0;
-        god = !god;
+      // Each run of quick taps counts from the stage it started at.
+      if (taps.n === 1) taps.from = cheat;
+      const was = cheat;
+      if (taps.from === 0) { if (taps.n === 5) cheat = 1; else if (taps.n === 8) cheat = 2; }
+      else if (taps.from === 1) { if (taps.n === 3) cheat = 2; }
+      else if (taps.n === 5) cheat = 0;
+      if (cheat !== was) {
         play('pickup');
-        say(god ? 'Override accepted. Nothing can hurt you.' : 'Override off.');
+        say(['Override off.', 'Override: unlimited power-ups.', 'Override: nothing can hurt you.'][cheat]);
       }
       break;
     }
@@ -391,7 +396,7 @@ function tick(dt) {
     else if (game.result) gameOver();
   } else {
     if (ui.state === 'paused') game.draw();
-    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, god, debug: DEBUG });
+    ui.buttons = drawScreen(ui.state, { t: ui.t, store, help: ui.help, over: ui.over, starting: ui.starting, page: ui.page, cheat, debug: DEBUG });
   }
 
   // A short notice along the bottom of the screen, on whatever is showing.

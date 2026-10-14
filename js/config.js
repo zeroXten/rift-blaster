@@ -2,7 +2,7 @@
 
 // Shown on the title screen, so it is easy to tell which version a device has loaded. Bump it
 // with every change that gets pushed: patch for a fix or tweak, minor for something new.
-export const VERSION = '1.2.1';
+export const VERSION = '1.2.2';
 
 export const H = 240;                // canvas height in pixels (landscape); width follows the screen
 export const FOV_LONG = 64;          // field of view across the width of the scanner's screen. A mismatch with the real camera makes rifts swim.
