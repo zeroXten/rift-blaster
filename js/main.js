@@ -128,6 +128,7 @@ function begin() {
   // back out of full screen. If the tap has gone stale by now, the casing's key still works.
   goLandscape();
   run = newRun();
+  scanner.reset();
   startLevel();
 }
 
